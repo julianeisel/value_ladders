@@ -571,6 +571,9 @@ bool ui_searchbox_apply(uiBut *but, struct ARegion *ar);
 void ui_searchbox_free(struct bContext *C, struct ARegion *ar);
 void ui_but_search_refresh(uiBut *but);
 
+void ui_vladder_do(struct bContext *C, struct uiBut *but, void *vldata);
+void ui_vladder_handle(struct bContext *C, struct uiBut *but, const struct wmEvent *event);
+
 uiBlock *ui_popup_block_refresh(struct bContext *C, uiPopupBlockHandle *handle,
                                 ARegion *butregion, uiBut *but);
 

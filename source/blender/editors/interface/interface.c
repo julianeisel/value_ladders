@@ -459,7 +459,7 @@ void UI_block_bounds_set_explicit(uiBlock *block, int minx, int miny, int maxx, 
 	block->bounds_type = UI_BLOCK_BOUNDS_NONE;
 }
 
-static int ui_but_calc_float_precision(uiBut *but, double value)
+int ui_but_calc_float_precision(uiBut *but, double value)
 {
 	int prec = (int)but->a2;
 

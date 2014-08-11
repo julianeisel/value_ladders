@@ -324,7 +324,6 @@ static void button_activate_exit(bContext *C, uiBut *but, uiHandleButtonData *da
                                  const bool mousemove, const bool onfree);
 static int ui_handler_region_menu(bContext *C, const wmEvent *event, void *userdata);
 static void ui_handle_button_activate(bContext *C, ARegion *ar, uiBut *but, uiButtonActivateType type);
-static void button_timers_tooltip_remove(bContext *C, uiBut *but);
 
 #ifdef USE_DRAG_MULTINUM
 static void ui_multibut_restore(uiHandleButtonData *data, uiBlock *block);
@@ -6708,7 +6707,7 @@ static bool button_modal_state(uiHandleButtonState state)
 	            BUTTON_STATE_MENU_OPEN);
 }
 
-static void button_timers_tooltip_remove(bContext *C, uiBut *but)
+void button_timers_tooltip_remove(bContext *C, uiBut *but)
 {
 	uiHandleButtonData *data;
 
@@ -8942,6 +8941,13 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void *UNUSED(use
 	but = ui_but_find_active_in_region(ar);
 
 	retval = ui_handler_panel_region(C, event, ar);
+
+	if (retval == WM_UI_HANDLER_CONTINUE)
+		if (but && ELEM(but->type, NUM, NUMSLI)) {
+			void vldata;
+			ui_vladder_do(C, but, &vldata);
+			retval = ui_vladder_handle(C, but, event, vldata);
+		}
 
 	if (retval == WM_UI_HANDLER_CONTINUE)
 		retval = ui_handle_list_event(C, event, ar);

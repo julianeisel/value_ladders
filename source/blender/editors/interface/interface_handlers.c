@@ -145,7 +145,6 @@ typedef enum uiHandleButtonState {
 	BUTTON_STATE_TEXT_EDITING,
 	BUTTON_STATE_TEXT_SELECTING,
 	BUTTON_STATE_MENU_OPEN,
-	BUTTON_STATE_VLADDER_OPEN,
 	BUTTON_STATE_WAIT_DRAG,
 	BUTTON_STATE_EXIT
 } uiHandleButtonState;
@@ -371,7 +370,7 @@ static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 	button_activate_state(C, but, BUTTON_STATE_EXIT);
 
 	uiPupBlockClose(C, data->block);
-//	WM_event_remove_ui_handler(&bdata->window->modalhandlers, ui_vladder_handle, NULL, data, false);
+	WM_event_remove_ui_handler(&bdata->window->modalhandlers, ui_vladder_handle, NULL, data, false);
 
 	WM_event_add_mousemove(C);
 
@@ -611,7 +610,7 @@ static int ui_vladder_create(bContext *C, ARegion *ar, uiBut *but)
 	/* initialize, draw and handle value ladders */
 	data = ui_vladder_init(but);
 	uiPupBlock(C, ui_vladder_draw, data);
-//	WM_event_add_ui_handler(C, &but->active->window->modalhandlers, ui_vladder_handle, NULL, data, false);
+	WM_event_add_ui_handler(C, &but->active->window->modalhandlers, ui_vladder_handle, NULL, data, false);
 
 	return WM_UI_HANDLER_CONTINUE;
 }
@@ -6993,7 +6992,7 @@ static bool button_modal_state(uiHandleButtonState state)
 	            BUTTON_STATE_MENU_OPEN);
 }
 
-void button_timers_tooltip_remove(bContext *C, uiBut *but)
+static void button_timers_tooltip_remove(bContext *C, uiBut *but)
 {
 	uiHandleButtonData *data;
 

@@ -247,6 +247,7 @@ typedef struct uiHandleButtonData {
 	int draglastvalue;
 	int dragstartvalue;
 	bool dragchange, draglock;
+	bool vladder; /* value ladders need special handling */
 	int dragsel;
 	float dragf, dragfstart;
 	CBData *dragcbd;
@@ -341,6 +342,8 @@ static bool but_copypaste_curve_alive = false;
 /************************** Value Ladders ***************************/
 /**
   * To prevent oversized value ladders we only support stepping values from 0.0001 to 1000 for now
+  * XXX temporary placed in interface_handlers.c
+  *
   */
 
 #define UI_VLADDER_MIN_WIDTH 2.0 * UI_UNIT_X
@@ -349,49 +352,101 @@ static bool but_copypaste_curve_alive = false;
 #define UI_VLADDER_MAX_STEPS 10
 
 typedef struct uiVLadderData {
-	ARegion *ar;
+	ARegion *ar, *ar_orig;
 	uiBlock *block;
-	uiBut *but;
-	double start_val, val, val_min, val_max, val_row[UI_VLADDER_MAX_STEPS];
-	int dragstartx;
-	short totrows, step_active;
-	char row[UI_VLADDER_MAX_STEPS][6], row_val[UI_VLADDER_MAX_STEPS][6], suffix[4]; /* XXX rename to char_... */
-	bool drag, changed;
+	uiBut *but; /* the button the value ladder is called from */
+
+	double start_val, val, val_step[UI_VLADDER_MAX_STEPS];
+	short totsteps, step_active;
+	char str_step[UI_VLADDER_MAX_STEPS][6];
+	bool drag, cancel;
 } uiVLadderData;
 
 static int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata);
+static void ui_multibut_free(uiHandleButtonData *data, uiBlock *block);
 
 static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 {
-	uiBut *but = data->but;
+	uiBut *but = data->but, *bt;
+	uiBlock *block = data->block;
 	uiHandleButtonData *bdata = but->active;
 
-	bdata->cancel = true;
 	button_activate_state(C, but, BUTTON_STATE_EXIT);
+	uiButClearFlag(but, UI_SELECT | UI_ACTIVE);
+#ifdef USE_DRAG_MULTINUM
+	if (bdata->multi_data.has_mbuts) {
+		for (bt = block->buttons.first; bt; bt = bt->next) {
+			/* it happens, that the first button is resetted to its hardmin if the ladder is removed */
+			if (bt == but || bt->flag & UI_BUT_DRAG_MULTI) {
+				if (data->cancel) {
+					ui_set_but_val(but, data->start_val);
+					ui_apply_but_func(C, but);
+				}
+				else if (bt->active->value != data->val) {
+					ui_set_but_val(but, data->val);
+					ui_apply_but_func(C, but);
+				}
+			}
+			if (bt->flag & UI_BUT_DRAG_MULTI) {
+				bt->flag &= ~UI_BUT_DRAG_MULTI;
+			}
+		}
+		ui_multibut_free(bdata, block);
+	}
+	else
+		bdata->cancel = true;
+#else
+	bdata->cancel = true;
+#endif
 
 	uiPupBlockClose(C, data->block);
-	WM_event_remove_ui_handler(&bdata->window->modalhandlers, ui_vladder_handle, NULL, data, false);
+	WM_event_remove_ui_handler(&bdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
 
+	WM_cursor_grab_disable(but->active->window, NULL); /* just in case */
 	WM_event_add_mousemove(C);
 
 	MEM_freeN(data);
 }
 
+static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBlock *block);
+
 static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadderData *data)
 {
+	uiBut *but = data->but;
+	float val_step = data->val_step[data->step_active];
+	float fac = event->shift ? 0.04f : 1.0f;
 	int mx = event->x, mx_prev = event->prevx;
-	int step_act = data->step_active;
-	float val = data->val_row[step_act];
+	bool changed;
 
-	if (!data->changed)
-		data->val = data->start_val;
+	mx *= fac;
+	mx_prev *= fac;
 
-	if (abs(mx - data->dragstartx) > 3 && (mx & 1)) {
-//		printf("true\n");
-		if (mx > mx_prev && data->val + val <= data->val_max + FLT_EPSILON)
-			data->val += val;
-		else if (mx < mx_prev && data->val - val >= data->val_min - FLT_EPSILON)
-			data->val -= val;
+	if (mx & 1) { /* halves the speed - gives more control */
+		if (mx > mx_prev && data->val + val_step <= but->softmax + 3 * FLT_EPSILON) { /* FLT_EPSILON had to be increased */
+			data->val += val_step;
+			changed = true;
+		}
+		else if (mx < mx_prev && data->val - val_step >= but->softmin - 3 * FLT_EPSILON) {
+			data->val -= val_step;
+			changed = true;
+		}
+	}
+	/* If space is rare it may happen that the popup region jitters when 'ui_apply_but_funcs_after' updates the
+	 * RNA_properties. I didn't find a solution for this but 'changed' helps to minimize the jittering drastically.
+	 * - Severin - */
+	if (changed) {
+		ui_set_but_val(but, data->val);
+		ui_apply_but_func(C, but);
+#ifdef USE_DRAG_MULTINUM
+		if (but->active->multi_data.has_mbuts) {
+			for (but = but->block->buttons.first; but; but = but->next) {
+				if (but->flag & UI_BUT_DRAG_MULTI) {
+					ui_set_but_val(but, data->val);
+					ui_apply_but_func(C, but);
+				}
+			}
+		}
+#endif
 
 		ED_region_tag_refresh_ui(data->ar);
 
@@ -401,68 +456,105 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 
 static int ui_step_active_find(ARegion *ar, uiVLadderData *data, const wmEvent *event)
 {
-	rcti rect = ar->winrct;
+	rcti rect = ar->winrct, title_rect;
 	const int step_y = UI_VLADDER_STEP_HEIGHT, mx = event->x, my = event->y;
 	int i;
 
 	BLI_rcti_resize(&rect, BLI_rcti_size_x(&rect) - 2 * UI_ThemeMenuShadowWidth(), BLI_rcti_size_y(&rect));
 
-	rect.ymin += UI_ThemeMenuShadowWidth() + (data->totrows - 1) * step_y;
+	title_rect = rect;
+	title_rect.ymax = rect.ymax - 0.5f * UI_UNIT_Y;
+	title_rect.ymin = title_rect.ymax - UI_UNIT_Y;
+
+	rect.ymin += UI_ThemeMenuShadowWidth() + (data->totsteps - 1) * step_y;
 	rect.ymax = rect.ymin + step_y;
 
-	if (ui_mouse_inside_region(ar, mx, my))
-		for (i = 0; i < data->totrows; i++, rect.ymin -= step_y, rect.ymax -= step_y)
-			if (BLI_rcti_isect_pt(&rect, mx, my))
-				return i;
+	if (ui_mouse_inside_region(ar, mx, my)) {
+		/* is the mouse inside the title/header? */
+		if (BLI_rcti_isect_pt(&title_rect, mx, my))
+			return -2;
+		else
+			for (i = 0; i < data->totsteps; i++, rect.ymin -= step_y, rect.ymax -= step_y)
+				if (BLI_rcti_isect_pt(&rect, mx, my))
+					return i;
+	}
 
 	return -1;
 }
 
+static bool ui_is_a_warp_but(uiBut *but);
+
 static int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 {
 	uiVLadderData *data = vldata;
+	uiPopupBlockHandle *handle = data->block->handle;
 	ARegion *ar = data->ar;
 	uiBut *but = data->but;
-	int retval = WM_UI_HANDLER_CONTINUE;
+	int retval = WM_UI_HANDLER_CONTINUE, mx = event->x, my = event->y;
+	const bool click = abs(mx - event->prevclickx) <= 3 && abs(my - event->prevclicky) <= 3; /* a mouse movement of 3px is still interpreted as a click */
 
 	switch (event->type) {
 		case MOUSEMOVE:
 		case MOUSEPAN:
 			if (data->drag) {
+				if (click && ui_is_a_warp_but(but)) {
+					WM_cursor_grab_enable(CTX_wm_window(C), true, true, NULL);
+				}
 				ui_vladder_handle_numedit(C, event, data);
 			}
+			/* reenable popup dragging - from ui_handle_menu_event() */
+#ifdef USE_DRAG_POPUP
+			else if (handle->is_grab) {
+				int mdiff[2];
+
+				sub_v2_v2v2_int(mdiff, &event->x, handle->grab_xy_prev);
+				copy_v2_v2_int(handle->grab_xy_prev, &event->x);
+
+				add_v2_v2v2_int(handle->popup_create_vars.event_xy, handle->popup_create_vars.event_xy, mdiff);
+
+				ui_popup_translate(C, ar, mdiff);
+			}
+#endif
 			else {
 				data->step_active = ui_step_active_find(ar, data, event);
-				ED_region_tag_refresh_ui(ar); /* ED_region_tag_redraw didn't work, this one did */
+				ED_region_tag_refresh_ui(ar); /* ED_region_tag_redraw didn't work, this did */
 			}
 			retval = WM_UI_HANDLER_CONTINUE;
 			break;
 		case PADENTER:
 		case RETKEY:
 		case LEFTMOUSE:
-			if (event->val == KM_PRESS && data->step_active != -1) {
-				data->drag = true;
-				data->dragstartx = event->x;
+			if (event->val == KM_PRESS) {
+				if (!click && data->step_active > -1)
+					data->drag = true;
+				/* reenable popup dragging - from ui_handle_menu_event() */
+#ifdef USE_DRAG_POPUP
+				else if (data->step_active == -2) { /* -2 == mouse inside header */
+					handle->is_grab = true;
+					copy_v2_v2_int(handle->grab_xy_prev, &event->x);
+				}
+#endif
 			}
 			else if (event->val == KM_RELEASE) {
-				data->drag = false;
-				if (abs(event->x - event->prevclickx) <= 3) {
-					if (data->changed) {
-						ui_set_but_val(but, data->val);
-						ui_apply_but_func(C, but);
-					}
+				if (handle->is_grab) {} /* skip */
+				else if (click) {
 					ui_vladder_remove(C, data);
 				}
+
+				WM_cursor_grab_disable(but->active->window, NULL);
+				data->drag = handle->is_grab = false;
 			}
 			retval = WM_UI_HANDLER_BREAK;
 			break;
 		case RIGHTMOUSE:
 		case ESCKEY:
+			data->cancel = true;
 			ui_set_but_val(but, data->start_val);
 			ui_vladder_remove(C, data);
 			retval = WM_UI_HANDLER_BREAK;
 			break;
 	}
+
 	return retval;
 }
 
@@ -471,98 +563,115 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	uiVLadderData *data = arg_data;
 	uiStyle *style = UI_GetStyleDraw();
 	uiBlock *block;
-	uiBut *but, *src_but = data->but;
-	const int step_y = UI_VLADDER_STEP_HEIGHT;
-	const int height = (data->totrows + U.pixelsize) * (step_y + 1);
-	const bool changed = data->changed;
-	char str_act[16], str_act_s[16], *suffix = data->suffix;
-	short strwidth;
-	int width;
-	int i;
+	uiBut *but = data->but;
+	const double value = data->val;
+	const char *suffix = NULL;
+	char str_act[16], str_act_s[16];
 
-	if (ui_is_but_float(src_but))
-		sprintf(str_act, "%f", changed ? data->val : data->start_val);
+	if (ui_is_but_float(but)) {
+		const int prec = ui_but_float_precision(but, value);
+		sprintf(str_act, "%.*f", min_ii(prec, 4), value);
+	}
 	else
-		sprintf(str_act, "%i", changed ? (int)data->val : (int)data->start_val);
-	sprintf(str_act_s, "%s%s", str_act, suffix);
+		sprintf(str_act, "%i", (int)value);
 
-	strwidth = BLF_width(style->widget.uifont_id, suffix ? str_act_s : str_act, sizeof(str_act));
-	width = max_ii(strwidth + UI_VLADDER_MARGIN, UI_VLADDER_MIN_WIDTH + UI_VLADDER_MARGIN);
+	/* based on interface.c */
+	if (but->rnaprop) {
+		PropertySubType pstype = RNA_property_subtype(but->rnaprop);
 
-	block = uiBeginBlock(C, ar, "_popup", UI_EMBOSSP);
-	uiBlockLayout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, UI_UNIT_X, 0.5f * height, width, 0,
-	              0, style);
-	uiBlockSetFlag(block, UI_BLOCK_LOOP | UI_BLOCK_REDRAW | UI_BLOCK_VLADDER);
-
-	/* draw buttons */
-	uiDefBut(block, PULLDOWN, 0, suffix ? str_act_s : str_act, 0, 0, width, UI_UNIT_Y, NULL, 0.0, 0.0, 0.0, 0.0, "");
-	for (i = 0; i < 2; i++)
-		uiDefBut(block, SEPRLINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
-
-	for (i = 0; i < data->totrows; i++) {
-		if (i == data->step_active) {
-			uiDefBut(block, PULLDOWN, 0, data->row[i], 0, 0, width, step_y / 2, NULL, 0.0, 0.0, 0.0, 0.0, "");
-			uiDefBut(block, PULLDOWN, 0, str_act, 0, 0, width, step_y / 2, NULL, 0.0, 0.0, 0.0, 0.0, "");
+		if (pstype == PROP_PERCENTAGE) {
+			suffix = "%";
 		}
-		else
-			uiDefBut(block, LABEL, 0, data->row[i], 0, 0, width, step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
-		if (i + 1 < data->totrows)
+		else if (pstype == PROP_PIXEL) {
+			suffix = " px";
+		}
+
+		if (suffix)
+			sprintf(str_act_s, "%s%s", str_act, suffix);
+	}
+	/* create block, draw buttons */
+	{
+		uiStyle *style = UI_GetStyleDraw();
+		const int step_y = UI_VLADDER_STEP_HEIGHT;
+		const int height = (data->totsteps + U.pixelsize) * (step_y + 1);
+		int width;
+		int i;
+		short strwidth;
+
+		strwidth = BLF_width(style->widget.uifont_id, suffix ? str_act_s : str_act, sizeof(str_act_s));
+		width = max_ii(strwidth + UI_VLADDER_MARGIN, UI_VLADDER_MIN_WIDTH + UI_VLADDER_MARGIN);
+
+		block = uiBeginBlock(C, ar, "_popup", UI_EMBOSSP);
+		uiBlockLayout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, /*0.5f * UI_UNIT_X*/ 0, 0.5f * height, width, 0, 0, style);
+		uiBlockSetFlag(block, UI_BLOCK_LOOP | UI_BLOCK_REDRAW | UI_BLOCK_VLADDER);
+
+		/* draw buttons */
+		uiDefBut(block, PULLDOWN, 0, suffix ? str_act_s : str_act, 0, 0, width, UI_UNIT_Y, NULL,
+		         0.0, 0.0, 0.0, 0.0, "");
+		for (i = 0; i < 2; i++)
 			uiDefBut(block, SEPRLINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+
+		for (i = 0; i < data->totsteps; i++) {
+			if (i == data->step_active) {
+				uiDefBut(block, PULLDOWN, 0, data->str_step[i], 0, 0, width, step_y / 2, NULL, 0.0, 0.0, 0.0, 0.0, "");
+				uiDefBut(block, PULLDOWN, 0, str_act, 0, 0, width, step_y / 2, NULL, 0.0, 0.0, 0.0, 0.0, "");
+			}
+			else
+				uiDefBut(block, LABEL, 0, data->str_step[i], 0, 0, width, step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
+			if (i + 1 < data->totsteps)
+				uiDefBut(block, SEPRLINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+		}
+
+		uiPopupBoundsBlock(block, 0, 0, 0);
 	}
 
-	uiPopupBoundsBlock(block, 0, 0, 0);
+		for (but = block->buttons.first; but; but = but->next)
+			but->drawflag &= ~UI_BUT_TEXT_LEFT;
 
-	for (but = block->buttons.first; but; but = but->next)
-		but->drawflag &= ~UI_BUT_TEXT_LEFT;
-
-	data->ar = ar;
-	data->block = block;
+		data->ar = ar;
+		data->block = block;
 
 	return block;
 }
 
-static uiVLadderData *ui_vladder_init(uiBut *but)
+static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 {
-	uiVLadderData *data;
-	float step = 1000;
-
-	data = MEM_callocN(sizeof(uiVLadderData), "uiVLadderData");
+	uiVLadderData *data = MEM_callocN(sizeof(uiVLadderData), "uiVLadderData");
+	float val_min, val_max, step = 1000;
 
 	data->but = but;
 	data->start_val = ui_get_but_val(but);
-	data->val_min = but->hardmin;
-	data->val_max = but->hardmax;
+	data->val = data->start_val;
 	data->step_active = -1;
 
-	for (step = 1000; step >= 0.0001f; step *= 0.1f) {
+	val_min = but->softmin;
+	val_max = but->softmax;
 
-		if (step > data->val_max)
+	for (step = 1000; step >= 0.0001f; step *= 0.1f) {
+		if (step > val_max || val_max - step < val_min || val_min + step > val_max)
 			continue;
 
 		if (step >= 1) {
-			sprintf(data->row[data->totrows], "%i", (int)step);
-			data->val_row[data->totrows] = (int)step;
+			sprintf(data->str_step[data->totsteps], "%i", (int)step);
+			data->val_step[data->totsteps] = (int)step;
 		}
 		else if (ui_is_but_float(but)) {
 			const char *val_str = NULL;
 			int max_char = ui_but_float_precision(but, data->start_val) + 1;
 
 			/* we could make this more fancy, but should be good enough*/
-			if (fabs(step - 0.1f) <= FLT_EPSILON) {
+			if (fabs(step - 0.1f) <= FLT_EPSILON)
 				val_str = ".1";
-				data->val_row[data->totrows] = 0.1f;
-			}
-			else if (fabs(step - 0.01f) <= FLT_EPSILON) {
+			else if (fabs(step - 0.01f) <= FLT_EPSILON)
 				val_str = ".01";
-				data->val_row[data->totrows] = 0.01f;
-			}
-			else if (fabs(step - 0.001f) <= FLT_EPSILON) {
+			else if (fabs(step - 0.001f) <= FLT_EPSILON)
 				val_str = ".001";
-				data->val_row[data->totrows] = 0.001f;
-			}
-			else if (fabs(step - 0.0001f) <= FLT_EPSILON) {
+			else if (fabs(step - 0.0001f) <= FLT_EPSILON)
 				val_str = ".0001";
-				data->val_row[data->totrows] = 0.0001f;
+
+			if (strlen(val_str) <= max_char) {
+				BLI_strncpy(data->str_step[data->totsteps], val_str, sizeof(data->str_step[0]));
+				data->val_step[data->totsteps] = step;
 			}
 
 			if (strlen(val_str) <= max_char)
@@ -573,46 +682,25 @@ static uiVLadderData *ui_vladder_init(uiBut *but)
 		else
 			break;
 
-		BLI_strncpy(data->row_val[data->totrows], (const char*)data->val_row, sizeof(data->row[0]));
-
-		data->totrows++;
-	}
-
-	/* based on interface.c */
-	if (but->rnaprop) {
-		PropertySubType pstype = RNA_property_subtype(but->rnaprop);
-		const char *drawstr_suffix = NULL;
-
-		if (pstype == PROP_PERCENTAGE) {
-			drawstr_suffix = "%";
-		}
-		else if (pstype == PROP_PIXEL) {
-			drawstr_suffix = " px";
-		}
-
-		if (drawstr_suffix)
-			BLI_strncpy(data->suffix, drawstr_suffix, sizeof(but->drawstr));
+		data->totsteps++;
 	}
 
 	return data;
 }
 
-static int ui_vladder_create(bContext *C, ARegion *ar, uiBut *but)
+static int ui_vladder_create(bContext *C, uiBut *but)
 {
 	uiVLadderData *data;
 
 	if (but->flag & UI_BUT_INACTIVE)
 		return WM_UI_HANDLER_CONTINUE;
 
-	button_timers_tooltip_remove(C, but);
-	button_activate_init(C, ar, but, BUTTON_ACTIVATE_OPEN);
-
-	/* initialize, draw and handle value ladders */
-	data = ui_vladder_init(but);
+	/* initialize, draw and handle value ladder */
+	data = ui_vladder_init(C, but);
 	uiPupBlock(C, ui_vladder_draw, data);
 	WM_event_add_ui_handler(C, &but->active->window->modalhandlers, ui_vladder_handle, NULL, data, false);
 
-	return WM_UI_HANDLER_CONTINUE;
+	return WM_UI_HANDLER_BREAK;
 }
 
 #undef UI_VLADDER_MIN_WIDTH
@@ -3832,6 +3920,12 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 				retval = WM_UI_HANDLER_BREAK;
 			}
+			else if (ELEM(event->type, LEFTMOUSE, PADENTER, RETKEY) && event->alt) {
+				data->dragstartx = data->draglastx = ui_is_a_warp_but(but) ? screen_mx : mx;
+				data->vladder = true;
+				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+				retval = WM_UI_HANDLER_BREAK;
+			}
 			else if (event->type == LEFTMOUSE) {
 				data->dragstartx = data->draglastx = ui_but_is_cursor_warp(but) ? screen_mx : mx;
 				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
@@ -3851,7 +3945,6 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 			copy_v2_v2_int(data->multi_data.drag_start, &event->x);
 #endif
 		}
-		
 	}
 	else if (data->state == BUTTON_STATE_NUM_EDITING) {
 		if (event->type == ESCKEY || event->type == RIGHTMOUSE) {
@@ -3924,7 +4017,9 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 		handlewidth = min_ff(BLI_rctf_size_x(&but->rect) / 3, BLI_rctf_size_y(&but->rect));
 
-		if (!ui_but_is_float(but)) {
+		if (data->vladder)
+			ui_vladder_create(C, but);
+		else if (!ui_but_is_float(but)) {
 			if (mx < (but->rect.xmin + handlewidth)) {
 				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
@@ -4121,6 +4216,11 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 				retval = WM_UI_HANDLER_BREAK;
 			}
+#if 0
+	/* Conflicts with value ladders. UI-team decided to break it but leave it commented for now.
+	 * XXX Delete it if no one complains or sends bug report until 2.75!
+	 * - Severin - */
+
 			/* alt-click on sides to get "arrows" like in UI_BTYPE_NUM buttons, and match wheel usage above */
 			else if (event->type == LEFTMOUSE && event->alt) {
 				int halfpos = BLI_rctf_cent_x(&but->rect);
@@ -4130,6 +4230,7 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				else
 					mx = but->rect.xmax;
 			}
+#endif
 			else if (event->type == LEFTMOUSE) {
 				data->dragstartx = mx;
 				data->draglastx = mx;
@@ -8347,6 +8448,9 @@ static int ui_handle_menu_event(
 
 	retval = WM_UI_HANDLER_CONTINUE;
 
+	if (block->flag & UI_BLOCK_VLADDER)
+		return retval;
+
 	mx = event->x;
 	my = event->y;
 	ui_window_to_block(ar, block, &mx, &my);
@@ -8380,9 +8484,6 @@ static int ui_handle_menu_event(
 		}
 	}
 #endif
-
-	if (block->flag & UI_BLOCK_VLADDER)
-		return WM_UI_HANDLER_CONTINUE;
 
 	if (but && button_modal_state(but->active->state)) {
 		if (block->flag & UI_BLOCK_MOVEMOUSE_QUIT) {
@@ -9237,13 +9338,6 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void *UNUSED(use
 	but = ui_but_find_active_in_region(ar);
 
 	retval = ui_handler_panel_region(C, event, ar);
-
-	if (retval == WM_UI_HANDLER_CONTINUE)
-		if (but && ELEM(but->type, NUM, NUMSLI)) {
-			uiVLadderData *vldata;
-
-			ui_vladder_handle(C, but, event, vldata);
-		}
 
 	if (retval == WM_UI_HANDLER_CONTINUE)
 		retval = ui_handle_list_event(C, event, ar);

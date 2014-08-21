@@ -258,6 +258,7 @@ struct uiBut {
 
 	BIFIconID icon;
 	bool lock;
+	bool vladder; /* value ladders need special handling */
 	char dt; /* drawtype: UI_EMBOSS, UI_EMBOSS_NONE ... etc, copied from the block */
 	signed char pie_dir; /* direction in a pie menu, used for collision detection (RadialDirection) */
 	char changed; /* could be made into a single flag */

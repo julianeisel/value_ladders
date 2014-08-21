@@ -539,6 +539,7 @@ static int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 #endif
 			else {
 				data->step_active = ui_step_active_find(ar, data, event);
+
 				ED_region_tag_refresh_ui(ar); /* ED_region_tag_redraw didn't work, this did */
 			}
 			retval = WM_UI_HANDLER_CONTINUE;
@@ -555,8 +556,8 @@ static int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 				else if (!click && data->step_active == -2) { /* -2 == mouse inside header */
 					handle->is_grab = true;
 					copy_v2_v2_int(handle->grab_xy_prev, &event->x);
-				}
 #endif
+				}
 			}
 			else if (event->val == KM_RELEASE) {
 				if (handle->is_grab) {} /* skip... */
@@ -4236,6 +4237,11 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 				retval = WM_UI_HANDLER_BREAK;
 			}
+			else if (ELEM(event->type, LEFTMOUSE, PADENTER, RETKEY) && event->alt) {
+				but->vladder = true;
+				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+				retval = WM_UI_HANDLER_BREAK;
+			}
 #if 0
 	/* Conflicts with value ladders. UI-team decided to break it but leave it commented for now.
 	 * XXX Delete it if no one complains or sends bug report until 2.75!
@@ -7827,14 +7833,6 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
 			case MIDDLEMOUSE:
 			case MOUSEPAN:
 				button_timers_tooltip_remove(C, but);
-			case PADENTER:
-			case RETKEY:
-			case LEFTMOUSE:
-				if (ELEM(but->type, NUM, NUMSLI) && event->shift) {
-					if (event->val == KM_RELEASE)
-						retval = ui_vladder_create(C, ar, but);
-					break;
-				}
 				/* fall-through */
 			default:
 				/* handle button type specific events */

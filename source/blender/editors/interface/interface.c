@@ -1938,6 +1938,21 @@ uiBut *ui_but_drag_multi_edit_get(uiBut *but)
 	return but_iter;
 }
 
+uiBut *ui_get_but_drag_multi_ladder(uiBut *but)
+{
+	uiBut *but_iter;
+
+	BLI_assert(but->flag & UI_BUT_DRAG_MULTI);
+
+	for (but_iter = but->block->buttons.first; but_iter; but_iter = but_iter->next) {
+		if (but_iter->vladder) {
+			break;
+		}
+	}
+
+	return but_iter;
+}
+
 static double ui_get_but_scale_unit(uiBut *but, double value)
 {
 	UnitSettings *unit = but->block->unit;
@@ -1972,7 +1987,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen)
 /**
  * \param float_precision  Override the button precision.
  */
-static void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
+void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
 {
 	UnitSettings *unit = but->block->unit;
 	const bool do_split = (unit->flag & USER_UNIT_OPT_SPLIT) != 0;
@@ -2090,6 +2105,32 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 void ui_but_string_get(uiBut *but, char *str, const size_t maxlen)
 {
 	ui_but_string_get_ex(but, str, maxlen, -1);
+}
+
+/**
+ * Same as ui_get_but_string_ex, but returns \a str including its suffix (if available).
+ */
+void ui_get_but_string_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision)
+{
+	ui_get_but_string_ex(but, str, maxlen, float_precision);
+
+	if (but->rnaprop) {
+		PropertySubType pstype = RNA_property_subtype(but->rnaprop);
+		const char *suffix = NULL;
+
+		if (pstype == PROP_PERCENTAGE)
+			suffix = "%";
+		else if (pstype == PROP_PIXEL)
+			suffix = " px";
+
+		if (suffix)
+			sprintf(str, "%s%s", str, suffix);
+	}
+}
+
+void ui_get_but_string_suffixed(uiBut *but, char *str, const size_t maxlen)
+{
+	ui_get_but_string_suffixed_ex(but, str, maxlen, -1);
 }
 
 #ifdef WITH_PYTHON

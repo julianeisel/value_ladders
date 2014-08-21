@@ -1258,7 +1258,15 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 		uiBut *but_edit = ui_but_drag_multi_edit_get(but);
 		if (but_edit) {
 			drawstr = but_edit->editstr;
-			fstyle->align = UI_STYLE_TEXT_LEFT;
+			fstyle->align = UI_STYLE_TEXT_LEFT; /* XXX not needed?! */
+			use_left_only = true;
+		}
+		else {
+			uiBut *but_ladder = ui_get_but_drag_multi_ladder(but);
+			if (but_ladder) {
+				ui_get_but_string_suffixed(but, (char *)drawstr, drawstr_left_len);
+				use_left_only = true;
+			}
 		}
 	}
 	else {
@@ -1267,6 +1275,13 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 			 * we rely on string being NULL terminated. */
 			drawstr_left_len = INT_MAX;
 			drawstr = but->editstr;
+			use_left_only = true;
+		}
+		else if (but->vladder) {
+			/* same for max length here */
+			drawstr_left_len = INT_MAX;
+			ui_get_but_string_suffixed(but, (char *)drawstr, drawstr_left_len);
+			use_left_only = true;
 		}
 	}
 
@@ -1334,9 +1349,8 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 	}
 	
 #ifdef USE_NUMBUTS_LR_ALIGN
-	if (!drawstr_right && ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER) &&
+	if (!drawstr_right && ELEM(but->type, NUM, NUMSLI) && !use_left_only)
 	    /* if we're editing or multi-drag (fake editing), then use left alignment */
-	    (but->editstr == NULL) && (drawstr == but->drawstr))
 	{
 		drawstr_right = strchr(drawstr + but->ofs, ':');
 		if (drawstr_right) {

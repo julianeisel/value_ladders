@@ -209,6 +209,78 @@ typedef struct uiHandleButtonMulti {
 
 
 
+typedef struct uiHandleButtonData {
+	wmWindowManager *wm;
+	wmWindow *window;
+	ARegion *region;
+
+	bool interactive;
+
+	/* overall state */
+	uiHandleButtonState state;
+	int retval;
+	/* booleans (could be made into flags) */
+	bool cancel, escapecancel;
+	bool applied, applied_interactive;
+	wmTimer *flashtimer;
+
+	/* edited value */
+	char *str, *origstr;
+	double value, origvalue, startvalue;
+	float vec[3], origvec[3];
+#if 0  /* UNUSED */
+	int togdual, togonly;
+#endif
+	ColorBand *coba;
+
+	/* tooltip */
+	ARegion *tooltip;
+	wmTimer *tooltiptimer;
+
+	/* auto open */
+	bool used_mouse;
+	wmTimer *autoopentimer;
+
+	/* text selection/editing */
+	int maxlen, selextend;
+	float selstartx;
+
+	/* number editing / dragging */
+	/* coords are Window/uiBlock relative (depends on the button) */
+	int draglastx, draglasty;
+	int dragstartx, dragstarty;
+	int draglastvalue;
+	int dragstartvalue;
+	bool dragchange, draglock;
+	int dragsel;
+	float dragf, dragfstart;
+	CBData *dragcbd;
+
+#ifdef USE_CONT_MOUSE_CORRECT
+	/* when ungrabbing buttons which are #ui_is_a_warp_but(), we may want to position them
+	 * FLT_MAX signifies do-nothing, use #ui_block_to_window_fl() to get this into a usable space  */
+	float ungrab_mval[2];
+#endif
+
+	/* menu open (watch uiFreeActiveButtons) */
+	uiPopupBlockHandle *menu;
+	int menuretval;
+
+	/* search box (watch uiFreeActiveButtons) */
+	ARegion *searchbox;
+#ifdef USE_KEYNAV_LIMIT
+	struct uiKeyNavLock searchbox_keynav_state;
+#endif
+
+#ifdef USE_DRAG_MULTINUM
+	/* Multi-buttons will be updated in unison with the active button. */
+	uiHandleButtonMulti multi_data;
+#endif
+
+	/* post activate */
+	uiButtonActivateType posttype;
+	uiBut *postbut;
+} uiHandleButtonData;
 
 typedef struct uiAfterFunc {
 	struct uiAfterFunc *next, *prev;

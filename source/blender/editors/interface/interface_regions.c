@@ -1936,8 +1936,8 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 		uiPopupBoundsBlock(block, 0, 0, 0);
 	}
 
-		for (bt = block->buttons.first; bt; bt = bt->next)
-				bt->drawflag &= ~UI_BUT_TEXT_LEFT; /* XXX needed after rebase? */
+//		for (bt = block->buttons.first; bt; bt = bt->next)
+//				bt->drawflag &= ~UI_BUT_TEXT_LEFT; /* XXX needed after rebase? */
 
 		data->ar = ar;
 		data->block = block;

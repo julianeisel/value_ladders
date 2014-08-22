@@ -613,6 +613,159 @@ void ui_draw_but_TRACKPREVIEW(ARegion *ar, uiBut *but, struct uiWidgetColors *wc
 void ui_draw_but_NODESOCKET(ARegion *ar, uiBut *but, struct uiWidgetColors *wcol, const rcti *rect);
 
 /* interface_handlers.c */
+
+/* place the mouse at the scaled down location when un-grabbing */
+#define USE_CONT_MOUSE_CORRECT
+
+/* support dragging multiple number buttons at once */
+#define USE_DRAG_MULTINUM
+
+/* so we can avoid very small mouse-moves from jumping away from keyboard navigation [#34936] */
+#define USE_KEYNAV_LIMIT
+
+typedef enum uiButtonActivateType {
+	BUTTON_ACTIVATE_OVER,
+	BUTTON_ACTIVATE,
+	BUTTON_ACTIVATE_APPLY,
+	BUTTON_ACTIVATE_TEXT_EDITING,
+	BUTTON_ACTIVATE_OPEN
+} uiButtonActivateType;
+
+typedef enum uiHandleButtonState {
+	BUTTON_STATE_INIT,
+	BUTTON_STATE_HIGHLIGHT,
+	BUTTON_STATE_WAIT_FLASH,
+	BUTTON_STATE_WAIT_RELEASE,
+	BUTTON_STATE_WAIT_KEY_EVENT,
+	BUTTON_STATE_NUM_EDITING,
+	BUTTON_STATE_TEXT_EDITING,
+	BUTTON_STATE_TEXT_SELECTING,
+	BUTTON_STATE_MENU_OPEN,
+	BUTTON_STATE_WAIT_DRAG,
+	BUTTON_STATE_EXIT
+} uiHandleButtonState;
+
+#ifdef USE_DRAG_MULTINUM
+
+typedef struct uiHandleButtonMulti {
+	enum {
+		BUTTON_MULTI_INIT_UNSET = 0,    /* gesture direction unknown, wait until mouse has moved enough... */
+		BUTTON_MULTI_INIT_SETUP,        /* vertical gesture detected, flag buttons interactively (UI_BUT_DRAG_MULTI) */
+		BUTTON_MULTI_INIT_ENABLE,       /* flag buttons finished, apply horizontal motion to active and flagged */
+		BUTTON_MULTI_INIT_DISABLE,      /* vertical gesture _not_ detected, take no further action */
+	} init;
+
+	bool has_mbuts;  /* any buttons flagged UI_BUT_DRAG_MULTI */
+	struct LinkNode *mbuts;
+	uiButStore *bs_mbuts;
+
+	bool is_proportional;
+
+	/* before activating, we need to check gesture direction
+	 * accumulate signed cursor movement here so we can tell if this is a vertical motion or not. */
+	float drag_dir[2];
+
+	/* values copied direct from event->x,y
+	 * used to detect buttons between the current and initial mouse position */
+	int drag_start[2];
+
+	/* store x location once BUTTON_MULTI_INIT_SETUP is set,
+	 * moving outside this sets BUTTON_MULTI_INIT_ENABLE */
+	int drag_lock_x;
+
+} uiHandleButtonMulti;
+
+#endif  /* USE_DRAG_MULTINUM */
+
+typedef struct uiHandleButtonData {
+	struct wmWindowManager *wm;
+	struct wmWindow *window;
+	ARegion *region;
+
+	bool interactive;
+
+	/* overall state */
+	uiHandleButtonState state;
+	int retval;
+	/* booleans (could be made into flags) */
+	bool cancel, escapecancel;
+	bool applied, applied_interactive;
+	struct wmTimer *flashtimer;
+
+	/* edited value */
+	char *str, *origstr;
+	double value, origvalue, startvalue;
+	float vec[3], origvec[3];
+#if 0  /* UNUSED */
+	int togdual, togonly;
+#endif
+	ColorBand *coba;
+
+	/* tooltip */
+	ARegion *tooltip;
+	struct wmTimer *tooltiptimer;
+
+	/* auto open */
+	bool used_mouse;
+	struct wmTimer *autoopentimer;
+
+	/* text selection/editing */
+	int maxlen, selextend;
+	float selstartx;
+
+	/* number editing / dragging */
+	/* coords are Window/uiBlock relative (depends on the button) */
+	int draglastx, draglasty;
+	int dragstartx, dragstarty;
+	int draglastvalue;
+	int dragstartvalue;
+	bool dragchange, draglock;
+	int dragsel;
+	float dragf, dragfstart;
+	CBData *dragcbd;
+
+#ifdef USE_CONT_MOUSE_CORRECT
+	/* when ungrabbing buttons which are #ui_is_a_warp_but(), we may want to position them
+	 * FLT_MAX signifies do-nothing, use #ui_block_to_window_fl() to get this into a usable space  */
+	float ungrab_mval[2];
+#endif
+
+	/* menu open (watch uiFreeActiveButtons) */
+	uiPopupBlockHandle *menu;
+	int menuretval;
+
+	/* search box (watch uiFreeActiveButtons) */
+	ARegion *searchbox;
+#ifdef USE_KEYNAV_LIMIT
+	struct uiKeyNavLock searchbox_keynav_state;
+#endif
+
+#ifdef USE_DRAG_MULTINUM
+	/* Multi-buttons will be updated in unison with the active button. */
+	uiHandleButtonMulti multi_data;
+#endif
+
+	/* post activate */
+	uiButtonActivateType posttype;
+	uiBut *postbut;
+} uiHandleButtonData;
+
+#define UI_VLADDER_MAX_STEPS 10
+#define UI_VLADDER_MIN_WIDTH 2.0 * UI_UNIT_X
+#define UI_VLADDER_STEP_HEIGHT 1.8 * UI_UNIT_Y
+#define UI_VLADDER_MARGIN 1.0f * UI_UNIT_X
+
+typedef struct uiVLadderData {
+	ARegion *ar, *ar_orig;
+	uiBlock *block;
+	uiBut *but; /* the button the value ladder is called from */
+
+	double val_step[UI_VLADDER_MAX_STEPS];
+	short totsteps, step_active, block_ofs_x;
+	char str_step[UI_VLADDER_MAX_STEPS][6];
+	bool drag, cancel;
+} uiVLadderData;
+
 PointerRNA *ui_handle_afterfunc_add_operator(struct wmOperatorType *ot, int opcontext, bool create_props);
 extern void ui_pan_to_scroll(const struct wmEvent *event, int *type, int *val);
 extern void ui_but_activate_event(struct bContext *C, struct ARegion *ar, uiBut *but);

@@ -1936,8 +1936,8 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 		uiPopupBoundsBlock(block, 0, 0, 0);
 	}
 
-//		for (bt = block->buttons.first; bt; bt = bt->next)
-//				bt->drawflag &= ~UI_BUT_TEXT_LEFT; /* XXX needed after rebase? */
+		for (bt = block->buttons.first; bt; bt = bt->next)
+				bt->drawflag &= ~UI_BUT_TEXT_LEFT;
 
 		data->ar = ar;
 		data->block = block;
@@ -1948,14 +1948,13 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 {
 	wmWindow *win = CTX_wm_window(C);
-	uiHandleButtonData *hbdata = but->active;
 	uiVLadderData *data = MEM_callocN(sizeof(uiVLadderData), "uiVLadderData");
+	uiHandleButtonData *hbdata = but->active;
 	float softmin = but->softmin, softmax = but->softmax, step = 1000;
 	int mx = win->eventstate->x, my = win->eventstate->y;
 
 	data->but = but;
 	data->step_active = -1;
-	data->mx = mx;
 
 	ui_window_to_block(hbdata->region, but->block, &mx, &my);
 	data->block_ofs_x = but->rect.xmax - mx;

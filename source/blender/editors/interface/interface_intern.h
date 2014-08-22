@@ -589,6 +589,8 @@ void ui_popup_block_free(struct bContext *C, uiPopupBlockHandle *handle);
 
 int ui_but_menu_step(uiBut *but, int step);
 
+void ui_vladder_create(struct bContext *C, uiBut *but);
+
 struct AutoComplete;
 
 /* interface_panel.c */

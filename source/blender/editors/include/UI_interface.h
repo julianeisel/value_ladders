@@ -82,6 +82,7 @@ struct wmEvent;
 typedef struct uiBut uiBut;
 typedef struct uiBlock uiBlock;
 typedef struct uiPopupBlockHandle uiPopupBlockHandle;
+typedef struct uiVLadderData uiVLadderData;
 typedef struct uiLayout uiLayout;
 
 /* Defines */

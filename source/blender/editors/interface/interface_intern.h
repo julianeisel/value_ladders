@@ -782,6 +782,10 @@ bool ui_but_is_editable_as_text(const uiBut *but);
 void ui_but_pie_dir_visual(RadialDirection dir, float vec[2]);
 void ui_but_pie_dir(RadialDirection dir, float vec[2]);
 float ui_block_calc_pie_segment(struct uiBlock *block, const float event_xy[2]);
+void ui_numedit_begin(uiBut *but, uiHandleButtonData *data);
+void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *data);
+void ui_vladder_create(struct bContext *C, uiBut *but);
+int ui_vladder_handle(struct bContext *C, const struct wmEvent *event, void *vldata);
 
 void ui_but_clipboard_free(void);
 void ui_panel_menu(struct bContext *C, ARegion *ar, Panel *pa);

@@ -1261,13 +1261,6 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 			fstyle->align = UI_STYLE_TEXT_LEFT; /* XXX not needed?! */
 			use_left_only = true;
 		}
-		else {
-			uiBut *but_ladder = ui_get_but_drag_multi_ladder(but);
-			if (but_ladder) {
-				ui_get_but_string_suffixed(but, (char *)drawstr, drawstr_left_len);
-				use_left_only = true;
-			}
-		}
 	}
 	else {
 		if (but->editstr) {
@@ -1275,12 +1268,6 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 			 * we rely on string being NULL terminated. */
 			drawstr_left_len = INT_MAX;
 			drawstr = but->editstr;
-			use_left_only = true;
-		}
-		else if (but->vladder) {
-			/* same for max length here */
-			drawstr_left_len = INT_MAX;
-			ui_get_but_string_suffixed(but, (char *)drawstr, drawstr_left_len);
 			use_left_only = true;
 		}
 	}

@@ -1972,7 +1972,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen)
 /**
  * \param float_precision  Override the button precision.
  */
-void ui_but_string_get_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
+void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
 {
 	UnitSettings *unit = but->block->unit;
 	const bool do_split = (unit->flag & USER_UNIT_OPT_SPLIT) != 0;
@@ -2076,7 +2076,7 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 
 		if (ui_but_is_float(but)) {
 			if (ui_but_is_unit(but)) {
-				ui_but_string_get_unit(but, str, maxlen, value, false, float_precision);
+				ui_get_but_string_unit(but, str, maxlen, value, false, float_precision);
 			}
 			else {
 				const int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) : float_precision;
@@ -2095,7 +2095,7 @@ void ui_but_string_get(uiBut *but, char *str, const size_t maxlen)
 /**
  * Same as ui_get_but_string_ex, but returns \a str including its suffix (if available).
  */
-void ui_but_string_get_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision)
+static void ui_but_string_get_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision)
 {
 	ui_but_string_get_ex(but, str, maxlen, float_precision);
 
@@ -2686,7 +2686,7 @@ void ui_but_update(uiBut *but)
 					/* support length type buttons */
 					else if (ui_but_is_unit(but)) {
 						char new_str[sizeof(but->drawstr)];
-						ui_but_string_get_unit(but, new_str, sizeof(new_str), value, true, -1);
+						ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
 						slen += BLI_strncpy_rlen(but->drawstr + slen, new_str, sizeof(but->drawstr) - slen);
 					}
 					else {

@@ -183,8 +183,6 @@ typedef struct uiAfterFunc {
 } uiAfterFunc;
 
 
-
-static bool ui_region_contains_point_px(ARegion *ar, int x, int y);
 static bool ui_but_is_interactive(const uiBut *but, const bool labeledit);
 static bool ui_but_contains_pt(uiBut *but, float mx, float my);
 static bool ui_but_contains_point_px(ARegion *ar, uiBut *but, int x, int y);
@@ -197,7 +195,6 @@ static void button_activate_exit(bContext *C, uiBut *but, uiHandleButtonData *da
 static int ui_handler_region_menu(bContext *C, const wmEvent *event, void *userdata);
 static void ui_handle_button_activate(bContext *C, ARegion *ar, uiBut *but, uiButtonActivateType type);
 static void button_timers_tooltip_remove(bContext *C, uiBut *but);
-static void ui_apply_but_func(bContext *C, uiBut *but);
 
 #ifdef USE_DRAG_MULTINUM
 static void ui_multibut_restore(uiHandleButtonData *data, uiBlock *block);

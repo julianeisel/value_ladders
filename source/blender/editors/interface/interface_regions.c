@@ -1871,7 +1871,7 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	bool mbuts;
 
 	if (is_but_unit)
-		ui_but_string_get_unit(but, str_val, sizeof(str_val), hbdata->value, true, -1);
+		ui_get_but_string_unit(but, str_val, sizeof(str_val), hbdata->value, true, -1);
 	else {
 		ui_but_string_get(but, str_val, sizeof(str_val));
 		ui_but_string_get_suffixed(but, str_val_s, sizeof(str_val));
@@ -1884,7 +1884,7 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 				char str_mbut_val[96];
 
 				if (is_but_unit)
-					ui_but_string_get_unit(bt, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
+					ui_get_but_string_unit(bt, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
 				else
 					ui_but_string_get(bt, str_mbut_val, sizeof(str_mbut_val));
 

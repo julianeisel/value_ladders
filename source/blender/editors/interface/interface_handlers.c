@@ -3445,6 +3445,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 			copy_v2_v2_int(data->multi_data.drag_start, &event->x);
 #endif
 		}
+
 	}
 	else if (data->state == BUTTON_STATE_NUM_EDITING) {
 		if (event->type == ESCKEY || event->type == RIGHTMOUSE) {
@@ -3726,8 +3727,9 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 			}
 #if 0
 	/* Conflicts with value ladders. UI-team decided to break it but leave it commented for now.
-	 * XXX Delete it if no one complains or sends bug report until 2.75!
-	 * - Severin - */
+	 * XXX can be deleted after some months
+	 * - Julian -
+	 */
 
 			/* alt-click on sides to get "arrows" like in UI_BTYPE_NUM buttons, and match wheel usage above */
 			else if (event->type == LEFTMOUSE && event->alt) {
@@ -6640,7 +6642,7 @@ static void button_tooltip_timer_reset(bContext *C, uiBut *but)
 		data->tooltiptimer = NULL;
 	}
 
-	if ((U.flag & USER_TOOLTIPS) || (but->flag & UI_OPTION_TOOLTIPS)) {
+	if ((U.flag & USER_TOOLTIPS) || (but->flag & UI_BUT_TIP_FORCE)) {
 		if (!but->block->tooltipdisabled) {
 			if (!wm->drags.first) {
 				data->tooltiptimer = WM_event_add_timer(data->wm, data->window, TIMER, BUTTON_TOOLTIP_DELAY);
@@ -7157,10 +7159,10 @@ static int ui_handle_button_over(bContext *C, const wmEvent *event, ARegion *ar)
 		if (but) {
 			if (event->alt) {
 				/* display tooltips if holding alt on mouseover when tooltips are off in prefs */
-				but->flag |= UI_OPTION_TOOLTIPS;
+				but->flag |= UI_BUT_TIP_FORCE;
 			}
 			else {
-				but->flag &= ~UI_OPTION_TOOLTIPS;
+				but->flag &= ~UI_BUT_TIP_FORCE;
 			}
 			button_activate_init(C, ar, but, BUTTON_ACTIVATE_OVER);
 		}

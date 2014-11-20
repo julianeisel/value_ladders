@@ -1996,7 +1996,7 @@ void ui_but_string_get_unit(uiBut *but, char *str, int len_max, double value, bo
 	               unit->system, RNA_SUBTYPE_UNIT_VALUE(unit_type), do_split, pad);
 }
 
-static float ui_but_get_step_unit(uiBut *but, float step_default)
+static float ui_get_but_step_unit(uiBut *but, float step_default)
 {
 	int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 	double step;
@@ -3452,7 +3452,7 @@ static uiBut *ui_def_but_rna(uiBlock *block, int type, int retval, const char *s
 
 	/* If this button uses units, calculate the step from this */
 	if ((proptype == PROP_FLOAT) && ui_but_is_unit(but)) {
-		but->a1 = ui_but_get_step_unit(but, but->a1);
+		but->a1 = ui_get_but_step_unit(but, but->a1);
 	}
 
 	if (func) {

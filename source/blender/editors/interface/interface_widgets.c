@@ -1338,7 +1338,6 @@ static void widget_draw_text(uiFontStyle *fstyle, uiWidgetColors *wcol, uiBut *b
 	
 #ifdef USE_NUMBUTS_LR_ALIGN
 	if (!drawstr_right && ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER) && !use_left_only)
-	    /* if we're editing or multi-drag (fake editing), then use left alignment */
 	{
 		drawstr_right = strchr(drawstr + but->ofs, ':');
 		if (drawstr_right) {

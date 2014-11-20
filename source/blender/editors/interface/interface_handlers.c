@@ -184,7 +184,7 @@ typedef struct uiAfterFunc {
 
 
 
-static bool ui_mouse_inside_region(ARegion *ar, int x, int y);
+static bool ui_region_contains_point_px(ARegion *ar, int x, int y);
 static bool ui_but_is_interactive(const uiBut *but, const bool labeledit);
 static bool ui_but_contains_pt(uiBut *but, float mx, float my);
 static bool ui_but_contains_point_px(ARegion *ar, uiBut *but, int x, int y);
@@ -826,7 +826,7 @@ static bool ui_multibut_states_tag(uiBut *but_active, uiHandleButtonData *data, 
 	return changed;
 }
 
-static void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *data)
+void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *data)
 {
 	uiBut *but;
 
@@ -2732,7 +2732,7 @@ static void ui_do_but_textedit_select(bContext *C, uiBlock *block, uiBut *but, u
 
 /* ************* number editing for various types ************* */
 
-static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
+void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
 {
 	if (but->type == UI_BTYPE_CURVE) {
 		but->editcumap = (CurveMapping *)but->poin;
@@ -3454,7 +3454,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				button_activate_state(C, but, BUTTON_STATE_EXIT);
 			}
 		}
-		else if ((but->vladder || event->type == LEFTMOUSE) && event->val != KM_PRESS) {
+		else if (event->type == LEFTMOUSE && event->val != KM_PRESS) {
 			if (data->dragchange) {
 #ifdef USE_DRAG_MULTINUM
 				/* if we started multibutton but didnt drag, then edit */
@@ -3484,7 +3484,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 			if (event->shift) fac /= 10.0f;
 			if (event->alt)   fac /= 20.0f;
 
-			if (but->vladder) {} /* skip... */
+			if (but->flag & UI_BUT_VLADDER_OPEN) {} /* skip... */
 			else if (ui_numedit_but_NUM(but, data, (ui_but_is_cursor_warp(but) ? screen_mx : mx), snap, fac))
 				ui_numedit_apply(C, block, but, data);
 #ifdef USE_DRAG_MULTINUM
@@ -3518,7 +3518,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 		handlewidth = min_ff(BLI_rctf_size_x(&but->rect) / 3, BLI_rctf_size_y(&but->rect));
 
-		if (!ui_is_but_float(but)) {
+		if (!ui_but_is_float(but)) {
 			if (mx < (but->rect.xmin + handlewidth)) {
 				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
@@ -3541,7 +3541,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 				button_activate_state(C, but, BUTTON_STATE_EXIT);
 			}
-			else if (but->vladder)
+			else if (but->flag & UI_BUT_VLADDER_OPEN)
 				ui_vladder_create(C, but);
 			else {
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
@@ -3566,7 +3566,7 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 				button_activate_state(C, but, BUTTON_STATE_EXIT);
 			}
-			else if (but->vladder)
+			else if (but->flag & UI_BUT_VLADDER_OPEN)
 				ui_vladder_create(C, but);
 			else {
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
@@ -3720,7 +3720,7 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 				retval = WM_UI_HANDLER_BREAK;
 			}
 			else if (ELEM(event->type, LEFTMOUSE, PADENTER, RETKEY) && event->alt) {
-				but->vladder = true;
+				but->flag |= UI_BUT_VLADDER_OPEN;
 				button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 				retval = WM_UI_HANDLER_BREAK;
 			}
@@ -6640,7 +6640,7 @@ static void button_tooltip_timer_reset(bContext *C, uiBut *but)
 		data->tooltiptimer = NULL;
 	}
 
-	if ((U.flag & USER_TOOLTIPS) || (but->flag & UI_BUT_TIP_FORCE)) {
+	if ((U.flag & USER_TOOLTIPS) || (but->flag & UI_OPTION_TOOLTIPS)) {
 		if (!but->block->tooltipdisabled) {
 			if (!wm->drags.first) {
 				data->tooltiptimer = WM_event_add_timer(data->wm, data->window, TIMER, BUTTON_TOOLTIP_DELAY);
@@ -7157,10 +7157,10 @@ static int ui_handle_button_over(bContext *C, const wmEvent *event, ARegion *ar)
 		if (but) {
 			if (event->alt) {
 				/* display tooltips if holding alt on mouseover when tooltips are off in prefs */
-				but->flag |= UI_BUT_TIP_FORCE;
+				but->flag |= UI_OPTION_TOOLTIPS;
 			}
 			else {
-				but->flag &= ~UI_BUT_TIP_FORCE;
+				but->flag &= ~UI_OPTION_TOOLTIPS;
 			}
 			button_activate_init(C, ar, but, BUTTON_ACTIVATE_OVER);
 		}
@@ -8846,10 +8846,10 @@ static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 	}
 #endif
 
-	uiButClearFlag(but, UI_SELECT | UI_ACTIVE);
+	UI_but_flag_enable(but, UI_SELECT | UI_ACTIVE);
 	button_activate_state(C, but, BUTTON_STATE_EXIT);
 
-	uiPupBlockClose(C, data->block);
+	UI_popup_block_close(C, data->block);
 	WM_event_remove_ui_handler(&hbdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
 
 	WM_cursor_grab_disable(but->active->window, NULL); /* just in case */
@@ -8873,10 +8873,10 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 	mx *= fac;
 	mx_prev *= fac;
 
-	if (ui_is_but_unit(but)) {
+	if (ui_but_is_unit(but)) {
 		UnitSettings *unit = but->block->unit;
 		float fac_unit = 1.0f;
-		int unit_type = RNA_SUBTYPE_UNIT_VALUE(uiButGetUnitType(but));
+		int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 
 		if (bUnit_IsValid(unit->system, unit_type)) {
 			fac_unit = (float)bUnit_BaseScalar(unit->system, unit_type);
@@ -8951,7 +8951,7 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 					if (value != mbut_state->value) {
 						mbut_state->value = value;
 
-						ui_set_but_val(but, value);
+						ui_but_value_set(but, value);
 						ui_apply_but_func(C, but);
 					}
 				}
@@ -8976,7 +8976,7 @@ static int ui_step_active_find(ARegion *ar, uiVLadderData *data, const wmEvent *
 	rect.ymin += UI_ThemeMenuShadowWidth() + (data->totsteps - 1) * step_y;
 	rect.ymax = rect.ymin + step_y;
 
-	if (ui_mouse_inside_region(ar, mx, my)) {
+	if (ui_region_contains_point_px(ar, mx, my)) {
 		/* is the mouse inside the title/header? */
 		if (BLI_rcti_isect_pt(&title_rect, mx, my))
 			return -2;
@@ -9005,7 +9005,7 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 	switch (event->type) {
 		case MOUSEMOVE:
 			if (data->drag) {
-				if (click && ui_is_a_warp_but(but))
+				if (click && ui_but_is_cursor_warp(but))
 					WM_cursor_grab_enable(CTX_wm_window(C), true, true, NULL);
 
 				ui_vladder_handle_numedit(C, event, data);

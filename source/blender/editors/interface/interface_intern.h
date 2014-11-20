@@ -445,8 +445,9 @@ extern void ui_hsvcircle_vals_from_pos(float *val_rad, float *val_dist, const rc
 extern void ui_hsvcircle_pos_from_vals(struct uiBut *but, const rcti *rect, float *hsv, float *xpos, float *ypos);
 extern void ui_hsvcube_pos_from_vals(struct uiBut *but, const rcti *rect, float *hsv, float *xp, float *yp);
 bool ui_but_is_colorpicker_display_space(struct uiBut *but);
-
-extern void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision) ATTR_NONNULL();
+void ui_but_string_get_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision);
+void ui_but_string_get_suffixed(uiBut *but, char *str, const size_t maxlen);
+extern void ui_but_string_get_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision) ATTR_NONNULL();
 extern void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision) ATTR_NONNULL();
 extern void ui_but_string_get(uiBut *but, char *str, const size_t maxlen) ATTR_NONNULL();
 extern void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen) ATTR_NONNULL();
@@ -573,9 +574,6 @@ bool ui_searchbox_apply(uiBut *but, struct ARegion *ar);
 void ui_searchbox_free(struct bContext *C, struct ARegion *ar);
 void ui_but_search_refresh(uiBut *but);
 
-void ui_vladder_do(struct bContext *C, struct uiBut *but, void *vldata);
-void ui_vladder_handle(struct bContext *C, struct uiBut *but, const struct wmEvent *event);
-
 uiBlock *ui_popup_block_refresh(struct bContext *C, uiPopupBlockHandle *handle,
                                 ARegion *butregion, uiBut *but);
 
@@ -589,7 +587,6 @@ void ui_popup_block_free(struct bContext *C, uiPopupBlockHandle *handle);
 
 int ui_but_menu_step(uiBut *but, int step);
 
-void ui_vladder_create(struct bContext *C, uiBut *but);
 
 struct AutoComplete;
 

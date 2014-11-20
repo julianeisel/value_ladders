@@ -1972,7 +1972,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen)
 /**
  * \param float_precision  Override the button precision.
  */
-void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
+void ui_but_string_get_unit(uiBut *but, char *str, int len_max, double value, bool pad, int float_precision)
 {
 	UnitSettings *unit = but->block->unit;
 	const bool do_split = (unit->flag & USER_UNIT_OPT_SPLIT) != 0;
@@ -1996,7 +1996,7 @@ void ui_get_but_string_unit(uiBut *but, char *str, int len_max, double value, bo
 	               unit->system, RNA_SUBTYPE_UNIT_VALUE(unit_type), do_split, pad);
 }
 
-static float ui_get_but_step_unit(uiBut *but, float step_default)
+static float ui_but_get_step_unit(uiBut *but, float step_default)
 {
 	int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 	double step;
@@ -2076,7 +2076,7 @@ void ui_but_string_get_ex(uiBut *but, char *str, const size_t maxlen, const int 
 
 		if (ui_but_is_float(but)) {
 			if (ui_but_is_unit(but)) {
-				ui_get_but_string_unit(but, str, maxlen, value, false, float_precision);
+				ui_but_string_get_unit(but, str, maxlen, value, false, float_precision);
 			}
 			else {
 				const int prec = (float_precision == -1) ? ui_but_calc_float_precision(but, value) : float_precision;
@@ -2095,9 +2095,9 @@ void ui_but_string_get(uiBut *but, char *str, const size_t maxlen)
 /**
  * Same as ui_get_but_string_ex, but returns \a str including its suffix (if available).
  */
-void ui_get_but_string_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision)
+void ui_but_string_get_suffixed_ex(uiBut *but, char *str, const size_t maxlen, const int float_precision)
 {
-	ui_get_but_string_ex(but, str, maxlen, float_precision);
+	ui_but_string_get_ex(but, str, maxlen, float_precision);
 
 	if (but->rnaprop) {
 		PropertySubType pstype = RNA_property_subtype(but->rnaprop);
@@ -2113,9 +2113,9 @@ void ui_get_but_string_suffixed_ex(uiBut *but, char *str, const size_t maxlen, c
 	}
 }
 
-void ui_get_but_string_suffixed(uiBut *but, char *str, const size_t maxlen)
+void ui_but_string_get_suffixed(uiBut *but, char *str, const size_t maxlen)
 {
-	ui_get_but_string_suffixed_ex(but, str, maxlen, -1);
+	ui_but_string_get_suffixed_ex(but, str, maxlen, -1);
 }
 
 #ifdef WITH_PYTHON
@@ -2686,7 +2686,7 @@ void ui_but_update(uiBut *but)
 					/* support length type buttons */
 					else if (ui_but_is_unit(but)) {
 						char new_str[sizeof(but->drawstr)];
-						ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
+						ui_but_string_get_unit(but, new_str, sizeof(new_str), value, true, -1);
 						slen += BLI_strncpy_rlen(but->drawstr + slen, new_str, sizeof(but->drawstr) - slen);
 					}
 					else {
@@ -3452,7 +3452,7 @@ static uiBut *ui_def_but_rna(uiBlock *block, int type, int retval, const char *s
 
 	/* If this button uses units, calculate the step from this */
 	if ((proptype == PROP_FLOAT) && ui_but_is_unit(but)) {
-		but->a1 = ui_get_but_step_unit(but, but->a1);
+		but->a1 = ui_but_get_step_unit(but, but->a1);
 	}
 
 	if (func) {

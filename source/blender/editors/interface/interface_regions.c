@@ -1867,14 +1867,14 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	uiBlock *block, *bblock = but->block;
 	uiHandleButtonData *hbdata = but->active;
 	char str_val[16], str_val_s[16];
-	const bool is_but_unit = ui_is_but_unit(but);
+	const bool is_but_unit = ui_but_is_unit(but);
 	bool mbuts;
 
 	if (is_but_unit)
-		ui_get_but_string_unit(but, str_val, sizeof(str_val), hbdata->value, true, -1);
+		ui_but_string_get_unit(but, str_val, sizeof(str_val), hbdata->value, true, -1);
 	else {
-		ui_get_but_string(but, str_val, sizeof(str_val));
-		ui_get_but_string_suffixed(but, str_val_s, sizeof(str_val));
+		ui_but_string_get(but, str_val, sizeof(str_val));
+		ui_but_string_get_suffixed(but, str_val_s, sizeof(str_val));
 	}
 
 #ifdef USE_DRAG_MULTINUM
@@ -1884,9 +1884,9 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 				char str_mbut_val[96];
 
 				if (is_but_unit)
-					ui_get_but_string_unit(bt, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
+					ui_but_string_get_unit(bt, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
 				else
-					ui_get_but_string(bt, str_mbut_val, sizeof(str_mbut_val));
+					ui_but_string_get(bt, str_mbut_val, sizeof(str_mbut_val));
 
 				sprintf(str_val, "%s  %s", str_val, str_mbut_val);
 				mbuts = true;
@@ -1896,7 +1896,7 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	/* create block, draw buttons */
 	{
 		wmWindow *win = CTX_wm_window(C);
-		uiStyle *style = UI_GetStyleDraw();
+		uiStyle *style = UI_style_get_dpi();
 		rctf brct_cpy; /* window relative copy of but->rect */
 		const float step_y = UI_VLADDER_STEP_HEIGHT;
 		const float height = (data->totsteps + U.pixelsize) * (step_y + 1);
@@ -1911,29 +1911,29 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 		                  data->block_ofs_x - BLI_rctf_size_x(&data->but->rect) - width :
 		                  data->block_ofs_x;
 
-		block = uiBeginBlock(C, ar, "_popup", UI_EMBOSSP);
-		uiBlockLayout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, block_ofs_x, 0.5f * height, width, 0, 0, style);
-		uiBlockSetFlag(block, UI_BLOCK_LOOP | UI_BLOCK_REDRAW | UI_BLOCK_VLADDER);
+		block = UI_block_begin(C, ar, "_popup", UI_EMBOSS_PULLDOWN);
+		UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, block_ofs_x, 0.5f * height, width, 0, 0, style);
+		UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_VLADDER);
 
 		/* draw buttons */
-		uiDefBut(block, PULLDOWN, 0, is_but_unit ? str_val : str_val_s, 0, 0, width, UI_UNIT_Y, NULL,
+		uiDefBut(block, UI_BTYPE_PULLDOWN, 0, is_but_unit ? str_val : str_val_s, 0, 0, width, UI_UNIT_Y, NULL,
 		         0.0, 0.0, 0.0, 0.0, "");
 		for (i = 0; i < 2; i++)
-			uiDefBut(block, SEPRLINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+			uiDefBut(block, UI_BTYPE_SEPR_LINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
 
 		for (i = 0; i < data->totsteps; i++) {
 			if (i == data->step_active) {
-				uiDefBut(block, PULLDOWN, 0, data->str_step[i], 0, 0, width, 0.5f * step_y, NULL,
+				uiDefBut(block, UI_BTYPE_PULLDOWN, 0, data->str_step[i], 0, 0, width, 0.5f * step_y, NULL,
 				         0.0, 0.0, 0.0, 0.0, "");
-				uiDefBut(block, PULLDOWN, 0, str_val, 0, 0, width, 0.5f * step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
+				uiDefBut(block, UI_BTYPE_PULLDOWN, 0, str_val, 0, 0, width, 0.5f * step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
 			}
 			else
-				uiDefBut(block, LABEL, 0, data->str_step[i], 0, 0, width, step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
+				uiDefBut(block, UI_BTYPE_LABEL, 0, data->str_step[i], 0, 0, width, step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
 			if (i + 1 < data->totsteps)
-				uiDefBut(block, SEPRLINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+				uiDefBut(block, UI_BTYPE_SEPR_LINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
 		}
 
-		uiPopupBoundsBlock(block, 0, 0, 0);
+		UI_block_bounds_set_popup(block, 0, 0, 0);
 	}
 
 		for (bt = block->buttons.first; bt; bt = bt->next)
@@ -1977,9 +1977,9 @@ static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 			sprintf(data->str_step[data->totsteps], "%i", (int)step);
 			data->val_step[data->totsteps] = (int)step;
 		}
-		else if (ui_is_but_float(but)) {
+		else if (ui_but_is_float(but)) {
 			const char *val_str = NULL;
-			int max_char = ui_but_float_precision(but, hbdata->value) + 1;
+			int max_char = ui_but_calc_float_precision(but, hbdata->value) + 1;
 
 			/* we could make this more fancy, but should be good enough*/
 			if (fabs(step - 0.1f) <= FLT_EPSILON)
@@ -2016,7 +2016,7 @@ void ui_vladder_create(bContext *C, uiBut *but)
 
 	/* initialize, draw and handle value ladder */
 	data = ui_vladder_init(C, but);
-	uiPupBlock(C, ui_vladder_draw, data);
+	UI_popup_block_invoke(C, ui_vladder_draw, data);
 	WM_event_add_ui_handler(C, &but->active->window->modalhandlers, ui_vladder_handle, NULL, data, false);
 }
 

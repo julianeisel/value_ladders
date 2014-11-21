@@ -1878,19 +1878,21 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	}
 
 #ifdef USE_DRAG_MULTINUM
-	if (hbdata->multi_data.has_mbuts)
-		for (bt = bblock->buttons.first; bt; bt = bt->next)
-			if (bt->flag & UI_BUT_DRAG_MULTI) {
+	if (hbdata->multi_data.has_mbuts) {
+		uiBut *mbut;
+		for (mbut = bblock->buttons.first; mbut; mbut = mbut->next)
+			if (mbut->flag & UI_BUT_DRAG_MULTI) {
 				char str_mbut_val[96];
 
 				if (is_but_unit)
-					ui_get_but_string_unit(bt, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
+					ui_get_but_string_unit(mbut, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
 				else
-					ui_but_string_get(bt, str_mbut_val, sizeof(str_mbut_val));
+					ui_but_string_get(mbut, str_mbut_val, sizeof(str_mbut_val));
 
 				sprintf(str_val, "%s  %s", str_val, str_mbut_val);
 				mbuts = true;
 			}
+	}
 #endif
 
 	/* create block, draw buttons */

@@ -8842,7 +8842,7 @@ static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 				mbut->flag &= ~UI_BUT_DRAG_MULTI;
 			}
 		}
-		ui_multibut_free(hbdata, block);
+//		ui_multibut_free(hbdata, block);
 	}
 #endif
 
@@ -8850,12 +8850,12 @@ static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 	button_activate_state(C, but, BUTTON_STATE_EXIT);
 
 //	UI_popup_block_close(C, block);
-	{
-		wmWindow *win = CTX_wm_window(C);
-		ARegion *ar = CTX_wm_region(C);
+//	{
+//		wmWindow *win = CTX_wm_window(C);
+//		ARegion *ar = CTX_wm_region(C);
 
-		ED_region_exit(C, ar);
-	}
+//		ED_region_exit(C, ar);
+//	}
 #if 1
 //	WM_event_remove_ui_handler(&hbdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
 

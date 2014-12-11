@@ -8842,28 +8842,21 @@ static void ui_vladder_remove(bContext *C, uiVLadderData *data)
 				mbut->flag &= ~UI_BUT_DRAG_MULTI;
 			}
 		}
-//		ui_multibut_free(hbdata, block);
+		ui_multibut_free(hbdata, block);
 	}
 #endif
 
 	UI_but_flag_enable(but, UI_SELECT | UI_ACTIVE);
 	button_activate_state(C, but, BUTTON_STATE_EXIT);
 
-//	UI_popup_block_close(C, block);
-//	{
-//		wmWindow *win = CTX_wm_window(C);
-//		ARegion *ar = CTX_wm_region(C);
+	UI_popup_block_close(C, block);
 
-//		ED_region_exit(C, ar);
-//	}
-#if 1
-//	WM_event_remove_ui_handler(&hbdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
+	WM_event_remove_ui_handler(&hbdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
 
-//	WM_cursor_grab_disable(but->active->window, NULL); /* just in case */
-//	WM_event_add_mousemove(C);
+	WM_cursor_grab_disable(but->active->window, NULL); /* just in case */
+	WM_event_add_mousemove(C);
 
-//	MEM_freeN(data);
-#endif
+	MEM_freeN(data);
 }
 
 static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadderData *data)

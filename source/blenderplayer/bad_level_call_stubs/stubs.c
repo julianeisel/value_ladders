@@ -502,6 +502,7 @@ struct uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, int align) RE
 bool uiLayoutGetRedAlert(struct uiLayout *layout) RET_ZERO
 void uiLayoutSetRedAlert(uiLayout *layout, bool redalert) RET_NONE
 void uiItemsEnumR(uiLayout *layout, struct PointerRNA *ptr, const char *propname) RET_NONE
+void uiItemMenuEnumR_prop(uiLayout *layout, struct PointerRNA *ptr, PropertyRNA *prop, const char *name, int icon) RET_NONE
 void uiItemMenuEnumR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *name, int icon) RET_NONE
 void uiItemEnumR_string(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *value, const char *name, int icon) RET_NONE
 void uiItemPointerR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, struct PointerRNA *searchptr, const char *searchpropname, const char *name, int icon) RET_NONE
@@ -573,6 +574,7 @@ struct RenderStats *RE_GetStats(struct Render *re) RET_NULL
 struct RenderData *RE_engine_get_render_data(struct Render *re) RET_NULL
 void RE_engine_update_result(struct RenderEngine *engine, struct RenderResult *result) RET_NONE
 void RE_engine_update_progress(struct RenderEngine *engine, float progress) RET_NONE
+void RE_engine_set_error_message(RenderEngine *engine, const char *msg) RET_NONE
 void RE_engine_end_result(RenderEngine *engine, struct RenderResult *result, int cancel, int merge_results) RET_NONE
 void RE_engine_update_stats(RenderEngine *engine, const char *stats, const char *info) RET_NONE
 void RE_layer_load_from_file(struct RenderLayer *layer, struct ReportList *reports, const char *filename, int x, int y) RET_NONE

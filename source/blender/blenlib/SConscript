@@ -34,8 +34,8 @@ cflags=''
 incs = [
     '.',
     '#/extern/wcwidth',
-    '#/intern/ghost',
     '#/intern/guardedalloc',
+    '#/intern/atomic',
     '../makesdna',
     env['BF_FREETYPE_INC'],
     env['BF_ZLIB_INC'],

@@ -315,6 +315,7 @@ void UI_draw_box_shadow(unsigned char alpha, float minx, float miny, float maxx,
 void UI_draw_roundbox_gl_mode(int mode, float minx, float miny, float maxx, float maxy, float rad);
 void UI_draw_roundbox_shade_x(int mode, float minx, float miny, float maxx, float maxy, float rad, float shadetop, float shadedown);
 void UI_draw_roundbox_shade_y(int mode, float minx, float miny, float maxx, float maxy, float rad, float shadeLeft, float shadeRight);
+void UI_draw_text_underline(int pos_x, int pos_y, int len, int height);
 
 /* state for scrolldrawing */
 #define UI_SCROLL_PRESSED       (1 << 0)
@@ -947,6 +948,7 @@ void uiItemS(uiLayout *layout); /* separator */
 
 void uiItemMenuF(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc func, void *arg);
 void uiItemMenuEnumO(uiLayout *layout, struct bContext *C, const char *opname, const char *propname, const char *name, int icon);
+void uiItemMenuEnumR_prop(uiLayout *layout, struct PointerRNA *ptr, PropertyRNA *prop, const char *name, int icon);
 void uiItemMenuEnumR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *name, int icon);
 
 /* UI Operators */
@@ -1001,6 +1003,7 @@ void UI_butstore_free(uiBlock *block, uiButStore *bs);
 bool UI_butstore_is_valid(uiButStore *bs);
 bool UI_butstore_is_registered(uiBlock *block, uiBut *but);
 void UI_butstore_register(uiButStore *bs_handle, uiBut **but_p);
+bool UI_butstore_register_update(uiBlock *block, uiBut *but_dst, const uiBut *but_src);
 void UI_butstore_unregister(uiButStore *bs_handle, uiBut **but_p);
 
 

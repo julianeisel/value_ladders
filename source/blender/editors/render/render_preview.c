@@ -79,14 +79,11 @@
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
-#include "IMB_colormanagement.h"
 
-#include "GPU_extensions.h"
 
 #include "BIF_gl.h"
 #include "BIF_glutil.h"
 
-#include "PIL_time.h"
 
 #include "RE_pipeline.h"
 #include "RE_engine.h"
@@ -97,9 +94,7 @@
 #include "ED_datafiles.h"
 #include "ED_render.h"
 
-#include "UI_interface.h"
 
-#include "render_intern.h"
 
 ImBuf *get_brush_icon(Brush *brush)
 {
@@ -566,8 +561,9 @@ static bool ed_preview_draw_rect(ScrArea *sa, int split, int first, rcti *rect, 
 				unsigned char *rect_byte = MEM_mallocN(rres.rectx * rres.recty * sizeof(int), "ed_preview_draw_rect");
 				float fx = rect->xmin + offx;
 				float fy = rect->ymin;
+				if (re)
+					RE_AcquiredResultGet32(re, &rres, (unsigned int *)rect_byte);
 				
-				RE_AcquiredResultGet32(re, &rres, (unsigned int *)rect_byte);
 				glaDrawPixelsSafe(fx, fy, rres.rectx, rres.recty, rres.rectx, GL_RGBA, GL_UNSIGNED_BYTE, rect_byte);
 				
 				MEM_freeN(rect_byte);

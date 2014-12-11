@@ -38,8 +38,11 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <assert.h>
+#include <errno.h>
 
-#include "GHOST_C-api.h"
+#ifdef WIN32
+#  include "GHOST_C-api.h"
+#endif
 
 #include "MEM_guardedalloc.h"
 
@@ -1400,6 +1403,64 @@ wmOperator *WM_operator_last_redo(const bContext *C)
 	return op;
 }
 
+/**
+ * Use for drag & drop a path or name with operators invoke() function.
+ */
+ID *WM_operator_drop_load_path(struct bContext *C, wmOperator *op, const short idcode)
+{
+	ID *id = NULL;
+	/* check input variables */
+	if (RNA_struct_property_is_set(op->ptr, "filepath")) {
+		const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
+		char path[FILE_MAX];
+		bool exists = false;
+
+		RNA_string_get(op->ptr, "filepath", path);
+
+		errno = 0;
+
+		if (idcode == ID_IM) {
+			id = (ID *)BKE_image_load_exists_ex(path, &exists);
+		}
+		else {
+			BLI_assert(0);
+		}
+
+		if (!id) {
+			BKE_reportf(op->reports, RPT_ERROR, "Cannot read %s '%s': %s",
+			            BKE_idcode_to_name(idcode), path,
+			            errno ? strerror(errno) : TIP_("unsupported format"));
+			return NULL;
+		}
+
+		if (is_relative_path ) {
+			if (exists == false) {
+				Main *bmain = CTX_data_main(C);
+
+				if (idcode == ID_IM) {
+					BLI_path_rel(((Image *)id)->name, bmain->name);
+				}
+				else {
+					BLI_assert(0);
+				}
+			}
+		}
+	}
+	else if (RNA_struct_property_is_set(op->ptr, "name")) {
+		char name[MAX_ID_NAME - 2];
+		RNA_string_get(op->ptr, "name", name);
+		id = BKE_libblock_find_name(idcode, name);
+		if (!id) {
+			BKE_reportf(op->reports, RPT_ERROR, "%s '%s' not found",
+			            BKE_idcode_to_name(idcode), name);
+			return NULL;
+		}
+		id_us_plus(id);
+	}
+
+	return id;
+}
+
 static void wm_block_redo_cb(bContext *C, void *arg_op, int UNUSED(arg_event))
 {
 	wmOperator *op = arg_op;
@@ -1929,7 +1990,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 	             BLENDER_VERSION / 100, BLENDER_VERSION % 100);
 	uiItemStringO(col, IFACE_("Release Log"), ICON_URL, "WM_OT_url_open", "url", url);
 	uiItemStringO(col, IFACE_("Manual"), ICON_URL, "WM_OT_url_open", "url",
-	              "http://wiki.blender.org/index.php/Doc:2.6/Manual");
+	              "http://www.blender.org/manual");
 	uiItemStringO(col, IFACE_("Blender Website"), ICON_URL, "WM_OT_url_open", "url", "http://www.blender.org");
 	if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
 		BLI_snprintf(url, sizeof(url), "http://www.blender.org/documentation/blender_python_api_%d_%d"
@@ -2845,6 +2906,8 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
 	                 (RNA_struct_find_property(op->ptr, "use_mesh_compat") &&
 	                  RNA_boolean_get(op->ptr, "use_mesh_compat")),
 	                 G_FILE_MESH_COMPAT);
+#else
+#  error "don't remove by accident"
 #endif
 
 	if (wm_file_write(C, path, fileflags, op->reports) != 0)
@@ -4738,6 +4801,8 @@ static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "CLIP_OT_select_circle");
 	WM_modalkeymap_assign(keymap, "MASK_OT_select_circle");
 	WM_modalkeymap_assign(keymap, "NODE_OT_select_circle");
+	WM_modalkeymap_assign(keymap, "GPENCIL_OT_select_circle");
+	WM_modalkeymap_assign(keymap, "GRAPH_OT_select_circle");	
 
 }
 
@@ -4834,6 +4899,7 @@ static void gesture_border_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_border");
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_zoom_border"); /* XXX TODO: zoom border should perhaps map rightmouse to zoom out instead of in+cancel */
 	WM_modalkeymap_assign(keymap, "IMAGE_OT_render_border");
+	WM_modalkeymap_assign(keymap, "GPENCIL_OT_select_border");
 }
 
 /* zoom to border modal operators */

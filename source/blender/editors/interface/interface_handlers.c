@@ -96,6 +96,12 @@
 /* support dragging toggle buttons */
 #define USE_DRAG_TOGGLE
 
+/* support dragging multiple number buttons at once */
+#define USE_DRAG_MULTINUM
+
+/* so we can avoid very small mouse-moves from jumping away from keyboard navigation [#34936] */
+#define USE_KEYNAV_LIMIT
+
 /* drag popups by their header */
 #define USE_DRAG_POPUP
 
@@ -125,6 +131,28 @@ static bool ui_mouse_motion_keynav_test(struct uiKeyNavLock *keynav, const wmEve
 #define MENU_TOWARDS_MARGIN 20  /* margin in pixels */
 #define MENU_TOWARDS_WIGGLE_ROOM 64  /* tolerance in pixels */
 
+typedef enum uiButtonActivateType {
+	BUTTON_ACTIVATE_OVER,
+	BUTTON_ACTIVATE,
+	BUTTON_ACTIVATE_APPLY,
+	BUTTON_ACTIVATE_TEXT_EDITING,
+	BUTTON_ACTIVATE_OPEN
+} uiButtonActivateType;
+
+typedef enum uiHandleButtonState {
+	BUTTON_STATE_INIT,
+	BUTTON_STATE_HIGHLIGHT,
+	BUTTON_STATE_WAIT_FLASH,
+	BUTTON_STATE_WAIT_RELEASE,
+	BUTTON_STATE_WAIT_KEY_EVENT,
+	BUTTON_STATE_NUM_EDITING,
+	BUTTON_STATE_TEXT_EDITING,
+	BUTTON_STATE_TEXT_SELECTING,
+	BUTTON_STATE_MENU_OPEN,
+	BUTTON_STATE_WAIT_DRAG,
+	BUTTON_STATE_EXIT
+} uiHandleButtonState;
+
 #ifdef USE_DRAG_MULTINUM
 
 /* how far to drag before we check for gesture direction (in pixels),
@@ -152,7 +180,108 @@ typedef struct uiButMultiState {
 	uiBut *but;
 } uiButMultiState;
 
+typedef struct uiHandleButtonMulti {
+	enum {
+		BUTTON_MULTI_INIT_UNSET = 0,    /* gesture direction unknown, wait until mouse has moved enough... */
+		BUTTON_MULTI_INIT_SETUP,        /* vertical gesture detected, flag buttons interactively (UI_BUT_DRAG_MULTI) */
+		BUTTON_MULTI_INIT_ENABLE,       /* flag buttons finished, apply horizontal motion to active and flagged */
+		BUTTON_MULTI_INIT_DISABLE,      /* vertical gesture _not_ detected, take no further action */
+	} init;
+
+	bool has_mbuts;  /* any buttons flagged UI_BUT_DRAG_MULTI */
+	struct LinkNode *mbuts;
+	uiButStore *bs_mbuts;
+
+	bool is_proportional;
+
+	/* before activating, we need to check gesture direction
+	 * accumulate signed cursor movement here so we can tell if this is a vertical motion or not. */
+	float drag_dir[2];
+
+	/* values copied direct from event->x,y
+	 * used to detect buttons between the current and initial mouse position */
+	int drag_start[2];
+
+	/* store x location once BUTTON_MULTI_INIT_SETUP is set,
+	 * moving outside this sets BUTTON_MULTI_INIT_ENABLE */
+	int drag_lock_x;
+
+} uiHandleButtonMulti;
+
 #endif  /* USE_DRAG_MULTINUM */
+
+typedef struct uiHandleButtonData {
+	struct wmWindowManager *wm;
+	struct wmWindow *window;
+	ARegion *region;
+
+	bool interactive;
+
+	/* overall state */
+	uiHandleButtonState state;
+	int retval;
+	/* booleans (could be made into flags) */
+	bool cancel, escapecancel;
+	bool applied, applied_interactive;
+	struct wmTimer *flashtimer;
+
+	/* edited value */
+	char *str, *origstr;
+	double value, origvalue, startvalue;
+	float vec[3], origvec[3];
+#if 0  /* UNUSED */
+	int togdual, togonly;
+#endif
+	ColorBand *coba;
+
+	/* tooltip */
+	ARegion *tooltip;
+	struct wmTimer *tooltiptimer;
+
+	/* auto open */
+	bool used_mouse;
+	struct wmTimer *autoopentimer;
+
+	/* text selection/editing */
+	int maxlen, selextend;
+	float selstartx;
+
+	/* number editing / dragging */
+	/* coords are Window/uiBlock relative (depends on the button) */
+	int draglastx, draglasty;
+	int dragstartx, dragstarty;
+	int draglastvalue;
+	int dragstartvalue;
+	bool dragchange, draglock;
+	int dragsel;
+	float dragf, dragfstart;
+	CBData *dragcbd;
+
+#ifdef USE_CONT_MOUSE_CORRECT
+	/* when ungrabbing buttons which are #ui_is_a_warp_but(), we may want to position them
+	 * FLT_MAX signifies do-nothing, use #ui_block_to_window_fl() to get this into a usable space  */
+	float ungrab_mval[2];
+#endif
+
+	/* menu open (watch uiFreeActiveButtons) */
+	uiPopupBlockHandle *menu;
+	int menuretval;
+
+	/* search box (watch uiFreeActiveButtons) */
+	ARegion *searchbox;
+#ifdef USE_KEYNAV_LIMIT
+	struct uiKeyNavLock searchbox_keynav_state;
+#endif
+
+#ifdef USE_DRAG_MULTINUM
+	/* Multi-buttons will be updated in unison with the active button. */
+	uiHandleButtonMulti multi_data;
+#endif
+
+	/* post activate */
+	uiButtonActivateType posttype;
+	uiBut *postbut;
+} uiHandleButtonData;
 
 typedef struct uiAfterFunc {
 	struct uiAfterFunc *next, *prev;

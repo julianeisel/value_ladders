@@ -9179,7 +9179,7 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 	}
 }
 
-static int ui_step_active_find(ARegion *ar, uiVLadderData *data, const wmEvent *event)
+static int ui_vladder_step_active_find(ARegion *ar, uiVLadderData *data, const wmEvent *event)
 {
 	rcti rect = ar->winrct, title_rect;
 	const int step_y = UI_VLADDER_STEP_HEIGHT, mx = event->x, my = event->y;
@@ -9240,7 +9240,7 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 			}
 #endif
 			else {
-				data->step_active = ui_step_active_find(ar, data, event);
+				data->step_active = ui_vladder_step_active_find(ar, data, event);
 
 				ED_region_tag_refresh_ui(ar); /* ED_region_tag_redraw didn't work, this did */
 			}
@@ -9264,8 +9264,10 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 					ui_vladder_remove(C, data);
 				}
 #ifdef USE_DRAG_POPUP
-				else if (puphandle->is_grab)
+				else if (puphandle->is_grab) {
 					puphandle->is_grab = false;
+					WM_event_add_mousemove(C);
+				}
 #endif
 
 				WM_cursor_grab_disable(hbdata->window, NULL);

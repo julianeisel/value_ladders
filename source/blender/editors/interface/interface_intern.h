@@ -610,6 +610,9 @@ void ui_draw_but_NODESOCKET(ARegion *ar, uiBut *but, struct uiWidgetColors *wcol
 
 /* interface_handlers.c */
 
+/* support dragging multiple number buttons at once */
+#define USE_DRAG_MULTINUM
+
 /* place the mouse at the scaled down location when un-grabbing */
 #define USE_CONT_MOUSE_CORRECT
 
@@ -646,9 +649,12 @@ void ui_but_pie_dir_visual(RadialDirection dir, float vec[2]);
 void ui_but_pie_dir(RadialDirection dir, float vec[2]);
 float ui_block_calc_pie_segment(struct uiBlock *block, const float event_xy[2]);
 void ui_numedit_begin(uiBut *but, struct uiHandleButtonData *data);
-void ui_multibut_states_create(uiBut *but_active, struct uiHandleButtonData *data);
+void ui_multibut_free(struct uiHandleButtonData *data, uiBlock *block);
+void ui_multibut_enable(uiBut *but, struct uiHandleButtonData *data);
+bool ui_has_multibuts(struct uiHandleButtonData *data);
 void ui_vladder_create(struct bContext *C, uiBut *but);
 int ui_vladder_handle(struct bContext *C, const struct wmEvent *event, void *vldata);
+void ui_vladder_remove(struct bContext *C, uiVLadderData *data);
 
 void ui_but_clipboard_free(void);
 void ui_panel_menu(struct bContext *C, ARegion *ar, Panel *pa);

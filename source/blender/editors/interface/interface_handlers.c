@@ -96,9 +96,6 @@
 /* support dragging toggle buttons */
 #define USE_DRAG_TOGGLE
 
-/* support dragging multiple number buttons at once */
-#define USE_DRAG_MULTINUM
-
 /* so we can avoid very small mouse-moves from jumping away from keyboard navigation [#34936] */
 #define USE_KEYNAV_LIMIT
 
@@ -324,8 +321,8 @@ static bool ui_but_contains_pt(uiBut *but, float mx, float my);
 static bool ui_but_contains_point_px(ARegion *ar, uiBut *but, int x, int y);
 static uiBut *ui_but_find_mouse_over_ex(ARegion *ar, const int x, const int y, const bool labeledit);
 static uiBut *ui_but_find_mouse_over(ARegion *ar, const wmEvent *event);
-static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonActivateType type);
 static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState state);
+static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonActivateType type);
 static void button_activate_exit(bContext *C, uiBut *but, uiHandleButtonData *data,
                                  const bool mousemove, const bool onfree);
 static int ui_handler_region_menu(bContext *C, const wmEvent *event, void *userdata);
@@ -893,7 +890,7 @@ static void ui_multibut_restore(uiHandleButtonData *data, uiBlock *block)
 	}
 }
 
-static void ui_multibut_free(uiHandleButtonData *data, uiBlock *block)
+void ui_multibut_free(uiHandleButtonData *data, uiBlock *block)
 {
 	BLI_linklist_freeN(data->multi_data.mbuts);
 	data->multi_data.mbuts = NULL;
@@ -959,7 +956,7 @@ static bool ui_multibut_states_tag(uiBut *but_active, uiHandleButtonData *data, 
 	return changed;
 }
 
-void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *data)
+static void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *data)
 {
 	uiBut *but;
 
@@ -1030,6 +1027,20 @@ static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBl
 
 		}
 	}
+}
+
+void ui_multibut_enable(uiBut *but, uiHandleButtonData *data)
+{
+	if (data->multi_data.init == BUTTON_MULTI_INIT_SETUP) {
+		/* --> (BUTTON_MULTI_INIT_ENABLE) */
+		ui_multibut_states_create(but, data);
+		data->multi_data.init = BUTTON_MULTI_INIT_ENABLE;
+	}
+}
+
+bool ui_has_multibuts(uiHandleButtonData *data)
+{
+	return data->multi_data.has_mbuts;
 }
 
 #endif  /* USE_DRAG_MULTINUM */
@@ -6524,6 +6535,7 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
 					     /* just to be sure, check we're dragging more hoz then virt */
 					     abs(event->prevx - event->x) > abs(event->prevy - event->y)))
 					{
+						/* XXX use ui_multibut_enable(but, data) */
 						ui_multibut_states_create(but, data);
 						data->multi_data.init = BUTTON_MULTI_INIT_ENABLE;
 					}
@@ -9056,37 +9068,6 @@ static int ui_handle_menus_recursive(
  * - Since menu handling is skipped for ladders, we have to re-enable popup dragging and multinumber editing
  * - To prevent oversized value ladders we only support stepping values from 0.0001 to 1000 for now
  */
-
-static void ui_vladder_remove(bContext *C, uiVLadderData *data)
-{
-	uiBut *but = data->but, *mbut;
-	uiBlock *block = data->block;
-	uiHandleButtonData *hbdata = but->active;
-
-#ifdef USE_DRAG_MULTINUM
-	if (hbdata->multi_data.has_mbuts) {
-		uiBlock *block = but->block;
-		for (mbut = block->buttons.first; mbut; mbut = mbut->next) {
-			if (mbut->flag & UI_BUT_DRAG_MULTI) {
-				mbut->flag &= ~UI_BUT_DRAG_MULTI;
-			}
-		}
-		ui_multibut_free(hbdata, block);
-	}
-#endif
-
-	UI_but_flag_enable(but, UI_SELECT | UI_ACTIVE);
-	button_activate_state(C, but, BUTTON_STATE_EXIT);
-
-	UI_popup_block_close(C, block);
-
-	WM_event_remove_ui_handler(&hbdata->window->modalhandlers, ui_vladder_handle, NULL, data, true);
-
-	WM_cursor_grab_disable(but->active->window, NULL); /* just in case */
-	WM_event_add_mousemove(C);
-
-	MEM_freeN(data);
-}
 
 static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadderData *data)
 {

@@ -1858,6 +1858,37 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
 
 /**************************** Value Ladders *************************/
 
+void ui_vladder_remove(bContext *C, uiVLadderData *data)
+{
+	wmWindow *win = CTX_wm_window(C);
+	uiBut *but = data->but, *mbut;
+	uiBlock *block = data->block;
+
+#ifdef USE_DRAG_MULTINUM
+	if (ui_has_multibuts(but->active)) {
+		uiBlock *block = but->block;
+		for (mbut = block->buttons.first; mbut; mbut = mbut->next) {
+			if (mbut->flag & UI_BUT_DRAG_MULTI) {
+				mbut->flag &= ~UI_BUT_DRAG_MULTI;
+			}
+		}
+		ui_multibut_free(but->active, block);
+	}
+#endif
+
+	UI_but_flag_disable(but, UI_SELECT | UI_ACTIVE);
+	/*button_activate_state(C, but, BUTTON_STATE_EXIT);*/
+
+	UI_popup_block_close(C, block);
+
+	WM_event_remove_ui_handler(&win->modalhandlers, ui_vladder_handle, NULL, data, true);
+
+	WM_cursor_grab_disable(win, NULL); /* just in case */
+	WM_event_add_mousemove(C);
+
+	MEM_freeN(data);
+}
+
 static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 {
 	uiVLadderData *data = arg_data;
@@ -1875,14 +1906,14 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 	}
 
 #ifdef USE_DRAG_MULTINUM
-	if (hbdata->multi_data.has_mbuts) {
+	if (ui_has_multibuts(but->active)) {
 		uiBut *mbut;
 		for (mbut = bblock->buttons.first; mbut; mbut = mbut->next)
 			if (mbut->flag & UI_BUT_DRAG_MULTI) {
 				char str_mbut_val[96];
 
 				if (is_but_unit)
-					ui_get_but_string_unit(mbut, str_mbut_val, sizeof(str_mbut_val), hbdata->value, true, 3);
+					ui_get_but_string_unit(mbut, str_mbut_val, sizeof(str_mbut_val), ui_but_value_get(but), true, 3);
 				else
 					ui_but_string_get(mbut, str_mbut_val, sizeof(str_mbut_val));
 
@@ -1961,11 +1992,7 @@ static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 	ui_numedit_begin(but, but->active);
 
 #ifdef USE_DRAG_MULTINUM
-	if (hbdata->multi_data.init == BUTTON_MULTI_INIT_SETUP) {
-		/* --> (BUTTON_MULTI_INIT_ENABLE) */
-			ui_multibut_states_create(but, hbdata);
-			hbdata->multi_data.init = BUTTON_MULTI_INIT_ENABLE;
-	}
+	ui_multibut_enable(but, but->active);
 #endif
 
 	for (step = 1000; step >= 0.0001f; step *= 0.1f) {
@@ -2010,6 +2037,8 @@ void ui_vladder_create(bContext *C, uiBut *but)
 {
 	uiVLadderData *data;
 	wmWindow *win = CTX_wm_window(C);
+
+	BLI_assert(but->active);
 
 	if (but->flag & UI_BUT_INACTIVE)
 		return;

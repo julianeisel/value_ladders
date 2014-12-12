@@ -7022,6 +7022,12 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
 	ED_region_tag_redraw(data->region);
 }
 
+/* for external calls */
+void button_activate_state_exit(bContext *C, uiBut *but)
+{
+	button_activate_state(C, but, BUTTON_STATE_EXIT);
+}
+
 static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonActivateType type)
 {
 	uiHandleButtonData *data;

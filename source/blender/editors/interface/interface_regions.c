@@ -1877,7 +1877,7 @@ void ui_vladder_remove(bContext *C, uiVLadderData *data)
 #endif
 
 	UI_but_flag_disable(but, UI_SELECT | UI_ACTIVE);
-	/*button_activate_state(C, but, BUTTON_STATE_EXIT);*/
+	button_activate_state_exit(C, but);
 
 	UI_popup_block_close(C, block);
 

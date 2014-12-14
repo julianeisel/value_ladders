@@ -1754,6 +1754,11 @@ bool ui_but_is_unit(const uiBut *but)
 	return true;
 }
 
+bool UI_but_is_numbut(const uiBut *but)
+{
+	return ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
+}
+
 /**
  * Check if this button is similar enough to be grouped with another.
  */

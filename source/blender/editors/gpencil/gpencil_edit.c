@@ -102,6 +102,7 @@ bGPdata **ED_gpencil_data_get_pointers_direct(ID *screen_id, Scene *scene, ScrAr
 			case SPACE_TIME: /* Timeline - XXX: this is a hack to get it to show GP keyframes for 3D view */
 			{
 				const char gpencil_src = (scene) ? scene->toolsettings->gpencil_src : GP_TOOL_SOURCE_SCENE;
+				printf("%i\n", gpencil_src);
 				
 				if (gpencil_src == GP_TOOL_SOURCE_OBJECT) {
 					/* legacy behaviour for usage with old addons requiring object-linked to objects */
@@ -129,6 +130,8 @@ bGPdata **ED_gpencil_data_get_pointers_direct(ID *screen_id, Scene *scene, ScrAr
 						 *   we will also be forced to use the object
 						 */
 						if (ptr) RNA_id_pointer_create((ID *)ob, ptr);
+//						if (!scene)
+//						printf("scene\n");
 						return &ob->gpd;
 					}
 					else {

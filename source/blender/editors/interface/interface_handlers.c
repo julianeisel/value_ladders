@@ -3779,8 +3779,8 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 				button_activate_state(C, but, BUTTON_STATE_EXIT);
 			}
-			else if (but->flag & UI_BUT_VLADDER_OPEN)
-				ui_vladder_create(C, but);
+//			else if (but->flag & UI_BUT_VLADDER_OPEN)
+//				ui_vladder_create(C, but);
 			else {
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 			}
@@ -3804,8 +3804,8 @@ static int ui_do_but_NUM(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 
 				button_activate_state(C, but, BUTTON_STATE_EXIT);
 			}
-			else if (but->flag & UI_BUT_VLADDER_OPEN)
-				ui_vladder_create(C, but);
+//			else if (but->flag & UI_BUT_VLADDER_OPEN)
+//				ui_vladder_create(C, but);
 			else {
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 			}
@@ -4101,9 +4101,9 @@ static int ui_do_but_SLI(bContext *C, uiBlock *block, uiBut *but, uiHandleButton
 			retval = WM_UI_HANDLER_BREAK;
 		}
 		else {
-			if (but->flag & UI_BUT_VLADDER_OPEN)
-				ui_vladder_create(C, but);
-			else
+//			if (but->flag & UI_BUT_VLADDER_OPEN)
+//				ui_vladder_create(C, but);
+//			else
 				/* edit the value directly */
 				button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
 			retval = WM_UI_HANDLER_BREAK;
@@ -7216,6 +7216,7 @@ static uiBut *ui_context_button_active(const bContext *C, bool (*but_check_cb)(u
 	uiBut *but_found = NULL;
 
 	ARegion *ar = CTX_wm_region(C);
+	printf("test\n");
 
 	while (ar) {
 		uiBlock *block;

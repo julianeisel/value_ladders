@@ -1130,8 +1130,14 @@ static int gp_session_initdata(bContext *C, tGPsdata *p)
 	}
 	else {
 		/* if no existing GPencil block exists, add one */
-		if (*gpd_ptr == NULL)
+		if (*gpd_ptr == NULL) {
+			Object *ob = CTX_data_active_object(C);
+			if (ob && ob->gpd) {
+//				ob->gpd = NULL;
+//				printf("already_has\n");
+			}
 			*gpd_ptr = gpencil_data_addnew("GPencil");
+		}
 		p->gpd = *gpd_ptr;
 	}
 	

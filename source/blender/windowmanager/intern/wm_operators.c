@@ -2172,6 +2172,33 @@ static void WM_OT_call_menu_pie(wmOperatorType *ot)
 	RNA_def_string(ot->srna, "name", NULL, BKE_ST_MAXNAME, "Name", "Name of the pie menu");
 }
 
+static int wm_call_value_ladder_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+	uiBut *but = UI_context_active_but_get(C);
+
+	if (but/* && UI_but_is_numbut(but)*/) {
+		printf("printf\n");
+	}
+	return OPERATOR_CANCELLED;
+}
+
+static int wm_call_value_ladder_poll(bContext *C)
+{
+	return OPERATOR_CANCELLED;
+}
+
+static void WM_OT_call_value_ladder(wmOperatorType *ot)
+{
+	ot->name = "Call Value Ladder";
+	ot->idname = "WM_OT_call_value_ladder";
+	ot->description = "Call (draw) a value ladder to manipulate the individual digits of a buttons value";
+
+	ot->invoke = wm_call_value_ladder_invoke;
+	ot->poll = wm_call_value_ladder_poll;
+
+	ot->flag = OPTYPE_REGISTER;
+}
+
 /* ************ window / screen operator definitions ************** */
 
 /* this poll functions is needed in place of WM_operator_winactive
@@ -4747,6 +4774,7 @@ void wm_operatortype_init(void)
 	WM_operatortype_append(WM_OT_search_menu);
 	WM_operatortype_append(WM_OT_call_menu);
 	WM_operatortype_append(WM_OT_call_menu_pie);
+	WM_operatortype_append(WM_OT_call_value_ladder);
 	WM_operatortype_append(WM_OT_radial_control);
 #if defined(WIN32)
 	WM_operatortype_append(WM_OT_console_toggle);
@@ -4984,6 +5012,8 @@ void wm_window_keymap(wmKeyConfig *keyconf)
 	/* menus that can be accessed anywhere in blender */
 	WM_keymap_verify_item(keymap, "WM_OT_search_menu", SPACEKEY, KM_PRESS, 0, 0);
 	WM_keymap_add_menu(keymap, "USERPREF_MT_ndof_settings", NDOF_BUTTON_MENU, KM_PRESS, 0, 0);
+
+	WM_keymap_add_item(keymap, "WM_OT_call_value_ladder", LEFTMOUSE, KM_PRESS, KM_ALT, 0);
 
 	/* Space switching */
 	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F2KEY, KM_PRESS, KM_SHIFT, 0); /* new in 2.5x, was DXF export */

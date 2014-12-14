@@ -43,6 +43,7 @@
 
 #include "BLF_translation.h"
 
+#include "BKE_context.h"
 #include "BKE_report.h"
 
 #include "MEM_guardedalloc.h"

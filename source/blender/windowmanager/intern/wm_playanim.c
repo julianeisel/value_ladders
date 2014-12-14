@@ -1138,7 +1138,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
 				/* why only windows? (from 2.4x) - campbell */
 #ifdef _WIN32
-				GHOST_SetTitle(g_WS.ghost_window, ps.picture->name);
+				 GHOST_SetTitle(g_WS.ghost_window, ps.picture->name);
 #endif
 
 				while (pupdate_time()) PIL_sleep_ms(1);

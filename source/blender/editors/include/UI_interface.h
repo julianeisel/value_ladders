@@ -484,6 +484,8 @@ bool    UI_but_active_only(const struct bContext *C, struct ARegion *ar, uiBlock
 
 void    UI_but_execute(const struct bContext *C, uiBut *but);
 
+bool    UI_but_is_numbut(const uiBut *but);
+
 
 /* Buttons
  *

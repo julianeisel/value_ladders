@@ -9149,19 +9149,13 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 	}
 
 	if (abs(mx - mx_prev) & 1) { /* halves the speed -> more control */
-		const float softmin = but->softmin, softmax = but->softmax;
 		if (incr) {
 			value += val_step;
-			if (value > softmax) {
-				value = softmax;
-			}
 		}
 		else {
 			value -= val_step;
-			if (value < softmin) {
-				value = softmin;
-			}
 		}
+		CLAMP(value, (double)but->softmin, (double)but->softmax);
 	}
 
 	if (value != hbdata->value) {
@@ -9177,7 +9171,6 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 			for (but = but->block->buttons.first; but; but = but->next) {
 				if (but->flag & UI_BUT_DRAG_MULTI) {
 					uiButMultiState *mbut_state = ui_multibut_lookup(hbdata, but);
-					const float softmin = but->softmin, softmax = but->softmax;
 
 					/* ui_numedit_apply doesn't work in all situations, here */
 					if (!hbdata->multi_data.is_proportional) {
@@ -9189,8 +9182,7 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 								value += val_step;
 								thresh_mx = 0;
 							}
-							if (value > softmax) {
-								value = softmax;
+							if (value > but->softmax) {
 								if (!thresh_mx) {
 									thresh_mx = mx;
 								}
@@ -9201,21 +9193,13 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 								value -= val_step;
 								thresh_mx = 0;
 							}
-							if (value < softmin) {
-								value = softmin;
-							}
 							if (!thresh_mx) {
 								thresh_mx = mx;
 							}
 						}
 						mbut_state->drag_thresh_x = thresh_mx;
 					}
-					else if (value > softmax) {
-						value = softmax;
-					}
-					else if (value < softmin) {
-						value = softmin;
-					}
+					CLAMP(value, (double)but->softmin, (double)but->softmax);
 
 					if (value != mbut_state->value) {
 						mbut_state->value = value;

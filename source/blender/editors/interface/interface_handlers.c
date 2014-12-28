@@ -9277,7 +9277,7 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 	switch (event->type) {
 		case MOUSEMOVE:
 			/* start vladder numediting */
-			if (data->is_drag) {
+			if (data->is_pressed) {
 				if (click && ui_but_is_cursor_warp(but)) {
 					WM_cursor_grab_enable(CTX_wm_window(C), true, true, NULL);
 				}
@@ -9305,18 +9305,18 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 		case RETKEY:
 		case LEFTMOUSE:
 			if (event->val == KM_PRESS) {
-				if (!click && data->step_active > -1) {
-					data->is_drag = true;
+				if (data->step_active > -1) {
+					data->is_pressed = true;
 				}
 #ifdef USE_DRAG_POPUP
-				else if (!click && data->step_active == -2) { /* -2 == mouse inside header */
+				if (!click && data->step_active == -2) { /* -2 == mouse inside header */
 					puphandle->is_grab = true;
 					copy_v2_v2_int(puphandle->grab_xy_prev, &event->x);
 				}
 #endif
 			}
 			else if (event->val == KM_RELEASE) {
-				if (click && !data->is_drag) {
+				if (click) {
 					ui_vladder_end(C, data);
 				}
 #ifdef USE_DRAG_POPUP
@@ -9327,7 +9327,7 @@ int ui_vladder_handle(bContext *C, const wmEvent *event, void *vldata)
 #endif
 
 				WM_cursor_grab_disable(hbdata->window, NULL);
-				data->is_drag = puphandle->is_grab = false;
+				data->is_pressed = puphandle->is_grab = false;
 			}
 			retval = WM_UI_HANDLER_BREAK;
 			break;

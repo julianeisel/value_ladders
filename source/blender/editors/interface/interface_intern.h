@@ -634,7 +634,7 @@ typedef struct uiVLadderData {
 	short step_active; /* active step index (bottom to top, starting with 0,
 	                      -1 mouse is outside region, -2 mouse is inside header) */
 	short block_ofs_x; /* needed to make the ladder position relative to the button instead of the cursor */
-	bool is_drag;
+	bool is_pressed;   /* is LMB/enter pressed? */
 } uiVLadderData;
 
 PointerRNA *ui_handle_afterfunc_add_operator(struct wmOperatorType *ot, int opcontext, bool create_props);

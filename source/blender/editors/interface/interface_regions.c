@@ -2051,6 +2051,8 @@ static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 	return data;
 }
 
+/* Would prefer to have this as a operator to remove hardcoded shortcut. Problem is UI handling
+ * is done before operator handling, so numediting starts before value ladder can be created */
 void ui_vladder_begin(bContext *C, uiBut *but)
 {
 	uiVLadderData *data;

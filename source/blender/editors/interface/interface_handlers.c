@@ -104,6 +104,9 @@
 
 #define UI_MAX_PASSWORD_STR 128
 
+/* This hack is needed because we don't have a good way to re-reference keymap items once added: T42944 */
+#define USE_KEYMAP_ADD_HACK
+
 /* proto */
 static void ui_but_smart_controller_add(bContext *C, uiBut *from, uiBut *to);
 static void ui_but_link_add(bContext *C, uiBut *from, uiBut *to);
@@ -780,11 +783,18 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
 	ui_but_string_set(C, but, data->str);
 	ui_but_update(but);
 
-	/* give butfunc the original text too */
-	/* feature used for bone renaming, channels, etc */
-	/* afterfunc frees origstr */
-	but->rename_orig = data->origstr;
-	data->origstr = NULL;
+	/* give butfunc a copy of the original text too.
+	 * feature used for bone renaming, channels, etc.
+	 * afterfunc frees rename_orig */
+	if (data->origstr && (but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
+		/* In this case, we need to keep origstr available, to restore real org string in case we cancel after
+		 * having typed something already. */
+		but->rename_orig = BLI_strdup(data->origstr);
+	}
+	else {
+		but->rename_orig = data->origstr;
+		data->origstr = NULL;
+	}
 	ui_apply_but_func(C, but);
 
 	data->retval = but->retval;
@@ -2449,6 +2459,8 @@ static void ui_textedit_ime_begin(wmWindow *win, uiBut *UNUSED(but))
 	/* XXX Is this really needed? */
 	int x, y;
 
+	BLI_assert(win->ime_data == NULL);
+
 	/* enable IME and position to cursor, it's a trick */
 	x = win->eventstate->x;
 	/* flip y and move down a bit, prevent the IME panel cover the edit button */
@@ -2586,7 +2598,9 @@ static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 	WM_cursor_modal_restore(win);
 
 #ifdef WITH_INPUT_IME
-	ui_textedit_ime_end(win, but);
+	if (win->ime_data) {
+		ui_textedit_ime_end(win, but);
+	}
 #endif
 }
 
@@ -2897,9 +2911,10 @@ static void ui_do_but_textedit(bContext *C, uiBlock *block, uiBut *but, uiHandle
 			retval = WM_UI_HANDLER_BREAK;
 			
 		}
-		/* textbutton with magnifier icon: do live update for search button */
-		if (but->icon == ICON_VIEWZOOM)
+		/* textbutton with this flag: do live update (e.g. for search buttons) */
+		if (but->flag & UI_BUT_TEXTEDIT_UPDATE) {
 			update = true;
+		}
 	}
 
 #ifdef WITH_INPUT_IME
@@ -5838,6 +5853,10 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
 	return block;
 }
 
+#ifdef USE_KEYMAP_ADD_HACK
+static int g_kmi_id_hack;
+#endif
+
 static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
@@ -5878,7 +5897,10 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
 	uiItemR(layout, &ptr, "type", UI_ITEM_R_FULL_EVENT | UI_ITEM_R_IMMEDIATE, "", ICON_NONE);
 	
 	UI_block_bounds_set_popup(block, 6, -50, 26);
-	
+
+#ifdef USE_KEYMAP_ADD_HACK
+	g_kmi_id_hack = kmi_id;
+#endif
 	return block;
 }
 
@@ -5887,9 +5909,20 @@ static void menu_add_shortcut_cancel(struct bContext *C, void *arg1)
 	uiBut *but = (uiBut *)arg1;
 	wmKeyMap *km;
 	wmKeyMapItem *kmi;
-	IDProperty *prop = (but->opptr) ? but->opptr->data : NULL;
-	int kmi_id = WM_key_event_operator_id(C, but->optype->idname, but->opcontext, prop, true, &km);
-	
+#ifndef USE_KEYMAP_ADD_HACK
+	IDProperty *prop;
+#endif
+	int kmi_id;
+
+#ifdef USE_KEYMAP_ADD_HACK
+	km = WM_keymap_guess_opname(C, but->optype->idname);
+	kmi_id = g_kmi_id_hack;
+	UNUSED_VARS(but);
+#else
+	prop  = (but->opptr) ? but->opptr->data : NULL;
+	kmi_id = WM_key_event_operator_id(C, but->optype->idname, but->opcontext, prop, true, &km);
+#endif
+
 	kmi = WM_keymap_item_find_id(km, kmi_id);
 	WM_keymap_remove_item(km, kmi);
 }

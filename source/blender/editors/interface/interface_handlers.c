@@ -171,11 +171,7 @@ typedef enum uiHandleButtonState {
 
 /* a simple version of uiHandleButtonData when accessing multiple buttons */
 typedef struct uiButMultiState {
-	double origvalue, value;
-
-	/* x position of the cursor at the moment softmin/softmax is reached
-	 * for proportional multi-number editing (used for value ladders only) */
-	int drag_thresh_x;
+	double origvalue;
 
 	uiBut *but;
 } uiButMultiState;
@@ -9160,50 +9156,22 @@ static void ui_vladder_handle_numedit(bContext *C, const wmEvent *event, uiVLadd
 
 	if (value != hbdata->value) {
 		hbdata->value = value;
-
-		/* If space is rare it may happen that the popup region jitters when 'ui_apply_but_funcs_after' updates the
-		 * RNA_properties. I wasn't able to do anything else than minimizing the jittering
-		 * - Severin - */
 		ui_numedit_apply(C, but->block, but, hbdata);
 
 #ifdef USE_DRAG_MULTINUM
 		if (but->active->multi_data.has_mbuts) {
+			const double value_delta = hbdata->value - hbdata->origvalue;
 			for (but = but->block->buttons.first; but; but = but->next) {
 				if (but->flag & UI_BUT_DRAG_MULTI) {
 					uiButMultiState *mbut_state = ui_multibut_lookup(hbdata, but);
 
 					/* ui_numedit_apply doesn't work in all situations, here */
 					if (!hbdata->multi_data.is_proportional) {
-						int thresh_mx = mbut_state->drag_thresh_x;
-
-						value = mbut_state->value;
-						if (incr) {
-							if (!thresh_mx || mx <= thresh_mx) {
-								value += val_step;
-								thresh_mx = 0;
-							}
-							if (value > but->softmax) {
-								if (!thresh_mx) {
-									thresh_mx = mx;
-								}
-							}
-						}
-						else {
-							if (!thresh_mx || mx <= thresh_mx) {
-								value -= val_step;
-								thresh_mx = 0;
-							}
-							if (!thresh_mx) {
-								thresh_mx = mx;
-							}
-						}
-						mbut_state->drag_thresh_x = thresh_mx;
+						value = mbut_state->origvalue + value_delta;
 					}
 					CLAMP(value, (double)but->softmin, (double)but->softmax);
 
-					if (value != mbut_state->value) {
-						mbut_state->value = value;
-
+					if (value != hbdata->value) {
 						ui_but_value_set(but, value);
 						ui_apply_but_func(C, but);
 					}

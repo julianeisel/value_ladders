@@ -1858,7 +1858,7 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
 
 /**************************** Value Ladders *************************/
 
-void ui_vladder_remove(bContext *C, uiVLadderData *data)
+void ui_vladder_end(bContext *C, uiVLadderData *data)
 {
 	wmWindow *win = CTX_wm_window(C);
 	uiBut *but = data->but, *mbut;
@@ -1892,14 +1892,15 @@ void ui_vladder_remove(bContext *C, uiVLadderData *data)
 static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 {
 	uiVLadderData *data = arg_data;
+	uiBlock *block;
 	uiBut *but = data->but, *bt;
-	uiBlock *block, *bblock = but->block;
 	char str_val[16], str_val_s[16];
-	const bool is_but_unit = ui_but_is_unit(but);
+	const bool but_is_unit = ui_but_is_unit(but);
 	bool use_mbuts = false;
 
-	if (is_but_unit)
+	if (but_is_unit) {
 		ui_get_but_string_unit(but, str_val, sizeof(str_val), ui_but_value_get(but), true, -1);
+	}
 	else {
 		ui_but_string_get(but, str_val, sizeof(str_val));
 		ui_but_string_get_suffixed(but, str_val_s, sizeof(str_val));
@@ -1908,18 +1909,21 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 #ifdef USE_DRAG_MULTINUM
 	if (ui_has_multibuts(but->active)) {
 		uiBut *mbut;
-		for (mbut = bblock->buttons.first; mbut; mbut = mbut->next)
+		for (mbut = but->block->buttons.first; mbut; mbut = mbut->next) {
 			if (mbut->flag & UI_BUT_DRAG_MULTI) {
 				char str_mbut_val[96];
 
-				if (is_but_unit)
+				if (but_is_unit) {
 					ui_get_but_string_unit(mbut, str_mbut_val, sizeof(str_mbut_val), ui_but_value_get(but), true, 3);
-				else
+				}
+				else {
 					ui_but_string_get(mbut, str_mbut_val, sizeof(str_mbut_val));
+				}
 
 				sprintf(str_val, "%s  %s", str_val, str_mbut_val);
 				use_mbuts = true;
 			}
+		}
 	}
 #endif
 
@@ -1931,25 +1935,30 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 		const float step_y = UI_VLADDER_STEP_HEIGHT;
 		const float height = (data->totsteps + U.pixelsize) * (step_y + 1);
 		float width, strwidth;
-		short i, block_ofs_x;
+		short i, block_ofs_x = data->block_ofs_x;
 
 		strwidth = BLF_width(style->widget.uifont_id, use_mbuts ? str_val : str_val_s, sizeof(str_val_s));
 		width = max_ff(strwidth + UI_VLADDER_MARGIN, UI_VLADDER_MIN_WIDTH + UI_VLADDER_MARGIN);
 
-		ui_block_to_window_rctf(data->ar_orig, bblock, &brct_cpy, &but->rect);
-		block_ofs_x = brct_cpy.xmax + width + 2 * UI_UNIT_X > win->sizex ? /* without increasing with UI_UNIT_X the ladder would change position quite often while dragging */
-		                  data->block_ofs_x - BLI_rctf_size_x(&data->but->rect) - width :
-		                  data->block_ofs_x;
+		/* move the ladder to the left of the button if it looms to go over the window border */
+		ui_block_to_window_rctf(data->ar_orig, but->block, &brct_cpy, &but->rect);
+		/* UI_UNIT_X adds some extra space, without it the ladder would change position quite often while dragging */
+		if (brct_cpy.xmax + width + 2 * UI_UNIT_X > win->sizex) {
+			block_ofs_x = data->block_ofs_x - BLI_rctf_size_x(&data->but->rect) - width;
+		}
 
+		/* create the block */
 		block = UI_block_begin(C, ar, "_popup", UI_EMBOSS_PULLDOWN);
-		UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, block_ofs_x, 0.5f * height, width, 0, 0, style);
+		UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, block_ofs_x,
+		                0.5f * height, width, 0, 0, style);
 		UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_VLADDER);
 
 		/* draw buttons */
-		uiDefBut(block, UI_BTYPE_PULLDOWN, 0, is_but_unit ? str_val : str_val_s, 0, 0, width, UI_UNIT_Y, NULL,
+		uiDefBut(block, UI_BTYPE_PULLDOWN, 0, but_is_unit ? str_val : str_val_s, 0, 0, width, UI_UNIT_Y, NULL,
 		         0.0, 0.0, 0.0, 0.0, "");
-		for (i = 0; i < 2; i++)
+		for (i = 0; i < 2; i++) {
 			uiDefBut(block, UI_BTYPE_SEPR_LINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+		}
 
 		for (i = 0; i < data->totsteps; i++) {
 			if (i == data->step_active) {
@@ -1957,20 +1966,24 @@ static uiBlock *ui_vladder_draw(bContext *C, ARegion *ar, void *arg_data)
 				         0.0, 0.0, 0.0, 0.0, "");
 				uiDefBut(block, UI_BTYPE_PULLDOWN, 0, str_val, 0, 0, width, 0.5f * step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
 			}
-			else
+			else {
 				uiDefBut(block, UI_BTYPE_LABEL, 0, data->str_step[i], 0, 0, width, step_y, NULL, 0.0, 0.0, 0.0, 0.0, "");
-			if (i + 1 < data->totsteps)
+			}
+
+			if (i + 1 < data->totsteps) {
 				uiDefBut(block, UI_BTYPE_SEPR_LINE, 0, "", 0, 0, width, U.pixelsize, NULL, 0.0, 0.0, 0, 0, "");
+			}
 		}
 
 		UI_block_bounds_set_popup(block, 0, 0, 0);
 	}
 
-		for (bt = block->buttons.first; bt; bt = bt->next)
-				bt->drawflag &= ~UI_BUT_TEXT_LEFT;
+	for (bt = block->buttons.first; bt; bt = bt->next) {
+		bt->drawflag &= ~UI_BUT_TEXT_LEFT;
+	}
 
-		data->ar = ar;
-		data->block = block;
+	data->ar = ar;
+	data->block = block;
 
 	return block;
 }
@@ -1979,13 +1992,14 @@ static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 {
 	wmWindow *win = CTX_wm_window(C);
 	uiVLadderData *data = MEM_callocN(sizeof(uiVLadderData), "uiVLadderData");
-	float softmin = but->softmin, softmax = but->softmax, step = 1000;
+	float step;
 	int mx = win->eventstate->x, my = win->eventstate->y;
 
 	data->ar_orig = CTX_wm_region(C);
 	data->but = but;
 	data->step_active = -1;
 
+	/* the ladder should appear relative to the button, but appears relative to the cursor by default */
 	ui_window_to_block(data->ar_orig, but->block, &mx, &my);
 	data->block_ofs_x = but->rect.xmax - mx;
 
@@ -1995,53 +2009,58 @@ static uiVLadderData *ui_vladder_init(bContext *C, uiBut *but)
 	ui_multibut_enable(but, but->active);
 #endif
 
+	/* find out how many "steps" have to be created, assign the value and the UI string */
 	for (step = 1000; step >= 0.0001f; step *= 0.1f) {
-		if (step > softmax || softmax - step < softmin || softmin + step > softmax)
+		if (step > but->softmax ||
+		    but->softmax - step < but->softmin ||
+		    but->softmin + step > but->softmax)
+		{
 			continue;
+		}
 
+		/* assign values and strings for steps > 1 */
 		if (step >= 1) {
 			sprintf(data->str_step[data->totsteps], "%i", (int)step);
 			data->val_step[data->totsteps] = (int)step;
 		}
+		/* assign values and strings for steps < 1 */
 		else if (ui_but_is_float(but)) {
 			const char *val_str = NULL;
 			int max_char = ui_but_calc_float_precision(but, ui_but_value_get(but)) + 1;
 
 			/* we could make this more fancy, but should be good enough*/
-			if (fabs(step - 0.1f) <= FLT_EPSILON)
-				val_str = ".1";
-			else if (fabs(step - 0.01f) <= FLT_EPSILON)
-				val_str = ".01";
-			else if (fabs(step - 0.001f) <= FLT_EPSILON)
-				val_str = ".001";
-			else if (fabs(step - 0.0001f) <= FLT_EPSILON)
-				val_str = ".0001";
+			if (fabs(step - 0.1f) <= FLT_EPSILON) val_str = ".1";
+			else if (fabs(step - 0.01f) <= FLT_EPSILON) val_str = ".01";
+			else if (fabs(step - 0.001f) <= FLT_EPSILON) val_str = ".001";
+			else if (fabs(step - 0.0001f) <= FLT_EPSILON) val_str = ".0001";
 
 			if (strlen(val_str) <= max_char) {
 				BLI_strncpy(data->str_step[data->totsteps], val_str, sizeof(data->str_step[0]));
 				data->val_step[data->totsteps] = step;
 			}
-			else
+			else {
 				break;
+			}
 		}
-		else
+		else {
 			break;
-
+		}
 		data->totsteps++;
 	}
 
 	return data;
 }
 
-void ui_vladder_create(bContext *C, uiBut *but)
+void ui_vladder_begin(bContext *C, uiBut *but)
 {
 	uiVLadderData *data;
 	wmWindow *win = CTX_wm_window(C);
 
 	BLI_assert(but->active);
 
-	if (but->flag & UI_BUT_INACTIVE)
+	if (but->flag & UI_BUT_INACTIVE) {
 		return;
+	}
 
 	/* initialize, draw and handle value ladder */
 	data = ui_vladder_init(C, but);

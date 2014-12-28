@@ -622,14 +622,19 @@ void ui_draw_but_NODESOCKET(ARegion *ar, uiBut *but, struct uiWidgetColors *wcol
 #define UI_VLADDER_MARGIN 1.0f * UI_UNIT_X
 
 typedef struct uiVLadderData {
-	ARegion *ar, *ar_orig;
-	uiBlock *block;
-	uiBut *but; /* the button the value ladder is called from */
+	ARegion *ar;       /* ladder region */
+	uiBlock *block;    /* ladder block */
 
-	double val_step[UI_VLADDER_MAX_STEPS];
-	short totsteps, step_active, block_ofs_x;
-	char str_step[UI_VLADDER_MAX_STEPS][6];
-	bool drag, cancel;
+	uiBut *but;        /* the button the value ladder is called from (root button) */
+	ARegion *ar_orig;  /* original region that contains the root button */
+
+	char str_step[UI_VLADDER_MAX_STEPS][6]; /* the string that gets drawn on the "step" */
+	double val_step[UI_VLADDER_MAX_STEPS];  /* the value of the step */
+	short totsteps;    /* total amount of steps */
+	short step_active; /* active step index (bottom to top, starting with 0,
+	                      -1 mouse is outside region, -2 mouse is inside header) */
+	short block_ofs_x; /* needed to make the ladder position relative to the button instead of the cursor */
+	bool is_drag;
 } uiVLadderData;
 
 PointerRNA *ui_handle_afterfunc_add_operator(struct wmOperatorType *ot, int opcontext, bool create_props);
@@ -653,9 +658,9 @@ void ui_numedit_begin(uiBut *but, struct uiHandleButtonData *data);
 void ui_multibut_free(struct uiHandleButtonData *data, uiBlock *block);
 void ui_multibut_enable(uiBut *but, struct uiHandleButtonData *data);
 bool ui_has_multibuts(struct uiHandleButtonData *data);
-void ui_vladder_create(struct bContext *C, uiBut *but);
+void ui_vladder_begin(struct bContext *C, uiBut *but);
 int ui_vladder_handle(struct bContext *C, const struct wmEvent *event, void *vldata);
-void ui_vladder_remove(struct bContext *C, uiVLadderData *data);
+void ui_vladder_end(struct bContext *C, uiVLadderData *data);
 
 void ui_but_clipboard_free(void);
 void ui_panel_menu(struct bContext *C, ARegion *ar, Panel *pa);
